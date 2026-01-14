@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analysis Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        const energyGraphs = {{ energy_graphs | tojson }};
+        const onlyEnergiesGraphs = {{ only_energies_graphs | tojson }};
+        const daughtersEnergies = {{ daughters_energies | tojson }};
+        const daughtersGraphs = {{ daughters_graphs | tojson }};
+        const isotopesInfo = {{ isotopes_info | tojson }};
+        const staticBase = "{{ url_for('static', filename='') }}";
+
+        function showEnergyGraph(energy) {
+            const key = String(energy);
+            const filename = onlyEnergiesGraphs[key];
+            if (!filename) return;
+            let img = document.getElementById('energyGraph');
+            if (!img) {
+                // create the image element if it doesn't exist
+                img = document.createElement('img');
+                img.id = 'energyGraph';
+                img.alt = 'Energy graph';
+                img.style.width = '90%';
+                const container = document.getElementById('energiesContainer');
+                container.appendChild(document.createElement('br'));
+                container.appendChild(img);
+            }
+            // ensure proper slash between staticBase and filename
+            const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
+            img.src = base + filename;
+            img.style.display = 'block';
+        }
+
+        function showDaughterEnergies(daughter_isotope) {
+            const container = document.getElementById('energiesContainer');
+            container.innerHTML = "";
+            const energies = daughtersEnergies[daughter_isotope] || [];
+            container.innerHTML+='click to view energy graph: '
+            energies.forEach(energy => {
+                container.innerHTML += `<button onclick="showEnergyGraph('${energy}')">${energy}</button>`;
+            });
+            // ensure there is an image element to display the selected energy graph
+            container.innerHTML += '<br><img id="energyGraph" alt="Energy graph" style="width:90%">';
+        }
+
+        function showMessages(id1, id2) {
+        // hide all messages first
+        const msgs = [
+            "u238_graph","u238_daughters",
+            "pu239_graph","pu239_daughters",
+            "u235_graph","u235_daughters",
+            "th232_graph","th232_daughters"
+        ];
+        msgs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
+        // show the requested ones
+        document.getElementById(id1).style.display = "block";
+        document.getElementById(id2).style.display = "block";
+    }
+        function toggleDebug(){
+            const panel = document.getElementById('debugPanel');
+            if(panel.style.display === 'none'){
+                panel.style.display = 'block';
+                document.getElementById('debugIsotopes').textContent = JSON.stringify(isotopesInfo, null, 2);
+                document.getElementById('debugOnlyEnergies').textContent = JSON.stringify(onlyEnergiesGraphs, null, 2);
+                document.getElementById('debugDaughtersEnergies').textContent = JSON.stringify(daughtersEnergies, null, 2);
+                document.getElementById('debugEnergyGraphs').textContent = JSON.stringify(energyGraphs, null, 2);
+                document.getElementById('debugIsotopesDictionary').textContent = JSON.stringify(isotopes_dictionary, null, 2);
+            
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+    </script>
+</head>
+<body>
+    <table>
+        <thead>
+            <td colspan="2">
+            <h1>Analysis Results</h1>
+            </td>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    Mass Results: 
+                    <ul>
+                        {% for parent in results %}
+                            <li>
+                                {{ parent[0] }}:
+                                {% set mass = parent[1] %}
+                                {% set mass_unc = parent[2] %}
+                                {% if mass is not none %}
+                                    {% if mass|abs >= 0.01 %}
+                                        {{ '%.2f' % mass }}g
+                                    {% else %}
+                                        {{ '%.2e' % mass }}g
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                &nbsp;+-&nbsp;
+                                {% if mass_unc is not none %}
+                                    {% if mass_unc|abs >= 0.01 %}
+                                        {{ '%.2f' % mass_unc }}g
+                                    {% else %}
+                                        {{ '%.2e' % mass_unc }}g
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    Mass Plot
+                    <img src="{{ url_for('static', filename=results_graph) }}" alt="Spectrum Plot">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Click to view parent isotope info:
+                    <div id="buttonPanel">
+                    <button onclick="showMessages('u238_graph','u238_daughters')">U-238</button>
+                    <button onclick="showMessages('pu239_graph','pu239_daughters')">Pu-239</button>
+                    <button onclick="showMessages('u235_graph','u235_daughters')">U-235</button>
+                    <button onclick="showMessages('th232_graph','th232_daughters')">Th-232</button>
+                    </div>
+                </td>
+                <td>
+                    <div id="u238_daughters" style="display:none;">
+                        Click to view daughter isotope info:
+                        {% for daughter_isotope in energy_graphs["U-238"] %}
+                            <button onclick="showDaughterEnergies('{{ daughter_isotope }}')">{{ daughter_isotope }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <div id="pu239_daughters" style="display:none;">
+                        Click to view daughter isotope info:
+                        {% for daughter_isotope in energy_graphs["Pu-239"] %}
+                            <button onclick="showDaughterEnergies('{{ daughter_isotope }}')">{{ daughter_isotope }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <div id="u235_daughters" style="display:none;">
+                        Click to view daughter isotope info:
+                        {% for daughter_isotope in energy_graphs["U-235"] %}
+                            <button onclick="showDaughterEnergies('{{ daughter_isotope }}')">{{ daughter_isotope }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <div id="th232_daughters" style="display:none;">
+                        Click to view daughter isotope info:
+                        {% for daughter_isotope in energy_graphs["Th-232"] %}
+                            <button onclick="showDaughterEnergies('{{ daughter_isotope }}')">{{ daughter_isotope }}</button>
+                        {% endfor %}
+                    </div>
+
+                </td>
+            </tr>
+            <tr>
+                <td> 
+                    <div id="u238_graph" style="display:none;">
+                    <p>U-238 Mass Estimate by Daughter Isotope</p>
+                    {% if 'U-238' in daughters_graphs %}
+                        <img src="{{ url_for('static', filename=daughters_graphs['U-238']) }}" alt="Daughters Graph">
+                    {% else %}
+                        <p>No data</p>
+                    {% endif %}
+                    </div>
+
+                    <div id="pu239_graph" style="display:none;">
+                    <p>Pu-239 Mass Estimate by Daughter Isotope</p>
+                    {% if 'Pu-239' in daughters_graphs %}
+                        <img src="{{ url_for('static', filename=daughters_graphs['Pu-239']) }}" alt="Daughters Graph">
+                    {% else %}
+                        <p>No data</p>
+                    {% endif %}
+                    </div>
+
+                    <div id="u235_graph" style="display:none;">
+                    <p>U-235 Mass Estimate by Daughter Isotope</p>
+                    {% if 'U-235' in daughters_graphs %}
+                        <img src="{{ url_for('static', filename=daughters_graphs['U-235']) }}" alt="Daughters Graph">
+                    {% else %}
+                        <p>No data</p>
+                    {% endif %}
+                    </div>
+
+                    <div id="th232_graph" style="display:none;">
+                    <p>Th-232 Mass Estimate by Daughter Isotope</p>
+                    {% if 'Th-232' in daughters_graphs %}
+                        <img src="{{ url_for('static', filename=daughters_graphs['Th-232']) }}" alt="Daughters Graph">
+                    {% else %}
+                        <p>No data</p>
+                    {% endif %}
+                    </div>
+                </td>
+                <td id="energiesContainer">
+                </td>
+            </tr>
+            <!--
+            <tr>
+                <td colspan="2">
+                    <button onclick="toggleDebug()">Show / hide debug</button>
+                    <div id="debugPanel" style="display:none; white-space:pre-wrap; background:#f7f7f7; padding:8px; border:1px solid #ccc; max-height:300px; overflow:auto;">
+                        <h4>isotopes_info</h4>
+                        <pre id="debugIsotopes"></pre>
+                        <h4>only_energies_graphs</h4>
+                        <pre id="debugOnlyEnergies"></pre>
+                        <h4>daughters_energies</h4>
+                        <pre id="debugDaughtersEnergies"></pre>
+                        <h4>energy_graphs</h4>
+                        <pre id="debugEnergyGraphs"></pre>
+                        <h4>isotopes_dictionary</h4>
+                        <pre id="debugIsotopesDictionary">{{ isotopes_dictionary | tojson(indent=2) }}</pre>
+                    </div>
+                </td>
+            
+            </tr>
+            -->
+            <tr>
+                <td> <img src="{{ url_for('static', filename=key_graphs) }}" alt="U-235 to U-238 ratio graph"></td>
+                <td> {{ conclusions }} </td>
+            </tr>
+        </tbody>
+    </table>
+    <br>
+    <a href="/">Go back to upload more files</a>
+</body>
+</html>

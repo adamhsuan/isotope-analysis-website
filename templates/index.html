@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gamma Spectrum Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="fixed-table">
+    <table>
+        <thead>
+            <td>
+            <h1>Upload Files for Analysis</h1>
+            </td>
+        </thead>
+        <tbody>
+            <td>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <label>Spectrum file (.Spe):</label>
+                <input type="file" name="spectrum" required><br><br>
+
+                <label>Background file (.Spe):</label>
+                <input type="file" name="background" required><br><br>
+
+                <label>Efficiency Calibration JSON:</label>
+                <input type="file" name="efficiency" required><br><br>
+
+                <input type="submit" value="Analyze">
+            </form>
+            <hr>
+            <h3>Previous analyses</h3>
+            <ul>
+                {% if previous_analyses is defined and previous_analyses %}
+                    {% for a in previous_analyses %}
+                        <li><a href="/analysis/{{ a.id }}">{{ a.label }}</a></li>
+                    {% endfor %}
+                {% else %}
+                    <li>No previous analyses found.</li>
+                {% endif %}
+            </ul>
+            </td>
+        </tbody>
+    </table>
+    </div>
+</body>
+</html>
