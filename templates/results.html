@@ -14,8 +14,13 @@
         function showEnergyGraph(energy) {
             const key = String(energy);
             const filename = onlyEnergiesGraphs[key];
-            if (!filename) return;
             let img = document.getElementById('energyGraph');
+            if (!filename) {
+                img = document.createElement('img');
+                img.id = 'energyGraph';
+                img.alt = 'No graph available for this energy';
+                img.style.width = '90%';
+            }
             if (!img) {
                 // create the image element if it doesn't exist
                 img = document.createElement('img');
@@ -36,7 +41,7 @@
             const container = document.getElementById('energiesContainer');
             container.innerHTML = "";
             const energies = daughtersEnergies[daughter_isotope] || [];
-            container.innerHTML+='click to view energy graph: '
+            container.innerHTML+='click to view energy graph (red lines are the start and end of peak integration, green line is expected peak energy, only counts above dotted yellow line are recorded): '
             energies.forEach(energy => {
                 container.innerHTML += `<button onclick="showEnergyGraph('${energy}')">${energy}</button>`;
             });
