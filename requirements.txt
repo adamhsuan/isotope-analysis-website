@@ -1,7 +1,9 @@
-﻿Flask
+Flask
+gunicorn
 numpy
 pandas
 matplotlib
 scipy
-gunicorn
+uncertainties
+becquerel
 
