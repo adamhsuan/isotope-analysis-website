@@ -576,6 +576,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         returnstatement["conclusions"] = "no conclusions yet"
         return returnstatement
     
-    isotopes_dictionary = remove_close_energies(isotopes_dictionary)
+    #isotopes_dictionary = remove_close_energies(isotopes_dictionary)
     return analyze_the_spectrum(spectrum_path,Spectrum.from_file(spectrum_path),Spectrum.from_file(background_path),efficiency_path,"mass unknown")
 
