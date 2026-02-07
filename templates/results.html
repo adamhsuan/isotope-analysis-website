@@ -19,6 +19,8 @@
                 img = document.createElement('img');
                 img.id = 'energyGraph';
                 img.alt = 'No graph available for this energy';
+                const container = document.getElementById('energiesContainer');
+                container.innerHTML += `<p>No graph available for energy ${energy}</p>`;
                 img.style.width = '90%';
             }
             if (!img) {
