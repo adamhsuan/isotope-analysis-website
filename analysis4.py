@@ -37,7 +37,7 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
     #change based on files used:
     #DETECTOR_EFFICIENCY = "2019_NAA_eff_calibration_parameters.json"
     DETECTOR_EFFICIENCY = "2019_NAA_eff_calibration_parameters.json"
-    ENERGIES_TOO_CLOSE_CUTOFF = 1
+    ENERGIES_TOO_CLOSE_CUTOFF = 3
     isotopes_dictionary = {
         "U-238": {
             "half_life": 4.468e9 * 365.25 * 24 * 3600,
