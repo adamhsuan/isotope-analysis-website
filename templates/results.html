@@ -74,7 +74,6 @@
                 document.getElementById('debugDaughtersEnergies').textContent = JSON.stringify(daughtersEnergies, null, 2);
                 document.getElementById('debugEnergyGraphs').textContent = JSON.stringify(energyGraphs, null, 2);
                 document.getElementById('debugIsotopesDictionary').textContent = JSON.stringify(isotopes_dictionary, null, 2);
-            
             } else {
                 panel.style.display = 'none';
             }
@@ -208,7 +207,7 @@
                 <td id="energiesContainer">
                 </td>
             </tr>
-            <!--
+            
             <tr>
                 <td colspan="2">
                     <button onclick="toggleDebug()">Show / hide debug</button>
@@ -227,7 +226,7 @@
                 </td>
             
             </tr>
-            -->
+            
             <tr>
                 <td> <img src="{{ url_for('static', filename=key_graphs) }}" alt="U-235 to U-238 ratio graph"></td>
                 <td> {{ conclusions }} </td>

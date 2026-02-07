@@ -312,7 +312,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                     integral = max_baseline_adjusted_counts
                     print(f"Warning: could not find sufficient counts for peak at {energy} keV; using maximum found value of {max_baseline_adjusted_counts} counts.")   
                     break
-                
                 else:
                     the_energy+=0.1*(-1)**n*(n+1)
                     n+=1
@@ -512,7 +511,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                     energy = energy_and_yield[0]
                     if energy not in daughters_energies[daughter]:
                         daughters_energies[daughter].append(energy)
-                    
         return daughters_energies
     
     def get_only_energies_graphs(energies_graphs):
