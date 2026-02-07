@@ -15,28 +15,31 @@
             const key = String(energy);
             const filename = onlyEnergiesGraphs[key];
             let img = document.getElementById('energyGraph');
-            if (!filename) {
-                img = document.createElement('img');
-                img.id = 'energyGraph';
-                img.alt = 'No graph available for this energy';
-                const container = document.getElementById('energiesContainer');
-                container.innerHTML = `<p>No graph available for energy ${energy}</p>`;
-                img.style.width = '90%';
-            }
+            const container = document.getElementById('energiesContainer');
             if (!img) {
                 // create the image element if it doesn't exist
                 img = document.createElement('img');
                 img.id = 'energyGraph';
                 img.alt = 'Energy graph';
                 img.style.width = '90%';
-                const container = document.getElementById('energiesContainer');
                 container.appendChild(document.createElement('br'));
                 container.appendChild(img);
+            }
+            if (!p) {
+                p = document.createElement("p");
+                container.appendChild(p);
+            }
+            if (!filename) {
+                img.style.display = 'none';
+                p.textContent = `No graph available for energy ${energy}`;
+                container.appendChild(p);
+            }
+            else {
+                img.style.display = 'block';
             }
             // ensure proper slash between staticBase and filename
             const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
             img.src = base + filename;
-            img.style.display = 'block';
         }
 
         function showDaughterEnergies(daughter_isotope) {
