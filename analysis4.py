@@ -26,7 +26,7 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
     NA = 6.022e23
 
     RADIUS = 2
-    MIN_PEAK_COUNTS = 800
+    MIN_PEAK_COUNTS = 1000
     EFFICIENCY="2019_NAA_eff_calibration_parameters.json"
     CHECK_LIMIT=4
     MAX_UNCERTAINTY_PROPORTION = 0.1 #max uncertainty/counts
