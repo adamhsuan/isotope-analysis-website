@@ -15,7 +15,10 @@
             const key = String(energy);
             const filename = onlyEnergiesGraphs[key];
             let img = document.getElementById('energyGraph');
-            container = document.getElementById('energiesContainer');
+            const container = document.getElementById('energiesContainer');
+
+            console.log('showEnergyGraph called with', { energy, key, filename });
+
             if (!img) {
                 // create the image element if it doesn't exist
                 img = document.createElement('img');
@@ -26,18 +29,24 @@
                 container.appendChild(document.createElement('br'));
                 container.appendChild(img);
             }
-            if (!p) {
-                p = document.createElement("p");
-                container.appendChild(p);
 
+            let p = document.getElementById('energyGraphMsg');
+            if (!p) {
+                p = document.createElement('p');
+                p.id = 'energyGraphMsg';
+                container.appendChild(p);
             }
+
             if (!filename) {
                 img.style.display = 'none';
                 p.textContent = `No graph available for energy ${energy}`;
+                console.warn('No graph filename found for energy', energy);
             }
             else {
                 const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
-                img.src = base + filename;
+                const src = base + filename;
+                console.log('Setting energy graph src to', src);
+                img.src = src;
                 img.style.display = 'block';
                 p.textContent = '';
             }
