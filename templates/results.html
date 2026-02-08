@@ -15,7 +15,7 @@
             const key = String(energy);
             const filename = onlyEnergiesGraphs[key];
             let img = document.getElementById('energyGraph');
-            const container = document.getElementById('energiesContainer');
+            container = document.getElementById('energiesContainer');
             if (!img) {
                 // create the image element if it doesn't exist
                 img = document.createElement('img');
@@ -29,11 +29,11 @@
             if (!p) {
                 p = document.createElement("p");
                 container.appendChild(p);
+
             }
             if (!filename) {
                 img.style.display = 'none';
                 p.textContent = `No graph available for energy ${energy}`;
-                container.appendChild(p);
             }
             else {
                 const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
