@@ -508,7 +508,7 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                     daughters_energies[daughter]=[]
                 for energy_and_yield in isotopes_dictionary[parent]["daughter_isotopes"][daughter]:
                     # energy_and_yield is [energy, gamma_yield]
-                    energy = energy_and_yield[0]
+                    energy = str(energy_and_yield[0])
                     if energy not in daughters_energies[daughter]:
                         daughters_energies[daughter].append(energy)
         return daughters_energies
