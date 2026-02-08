@@ -402,7 +402,7 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
             #graph_peak(subtracted_spec,ene,title,RADIUS)
             #print(f"Results for {ene}keV peak using PF: uncalibrated counts: {pf_uncalibrated_daughter_counts}, counts: {pf_daughter_counts}, counts_unc: {pf_daughter_counts_unc}, predicted_parent_mass: {pf_predicted_parent_mass}g, predicted_parent_mass_unc: {pf_predicted_parent_mass_unc}g")
             #pf.plot_roi(ene)
-            title = f"{ene} daughter_counts: {daughter_counts} unc: {unc} uncalibrated_daughter_counts: {uncalibrated_daughter_counts} predicted_parent_mass: {predicted_parent_mass} predicted_parent_mass_unc: {predicted_parent_mass_unc}"
+            title = f"{ene} daughter_counts: {daughter_counts:.2e} unc: {unc:.2e} uncalibrated_daughter_counts: {uncalibrated_daughter_counts:.2e} predicted_parent_mass: {predicted_parent_mass:.2e} predicted_parent_mass_unc: {predicted_parent_mass_unc:.2e}"
             graph = graph_peak(subtracted_spec, ene, title, daughter_bounds, baseline)
             energy_graphs[ene].append(graph)
         energy_graphs = reorganize_energy_graphs(energy_graphs)
