@@ -35,11 +35,11 @@
                 container.appendChild(p);
             }
             else {
+                const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
+                img.src = base + filename;
                 img.style.display = 'block';
+                p.textContent = '';
             }
-            // ensure proper slash between staticBase and filename
-            const base = staticBase.endsWith('/') ? staticBase : staticBase + '/';
-            img.src = base + filename;
         }
 
         function showDaughterEnergies(daughter_isotope) {
