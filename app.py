@@ -2,7 +2,7 @@ import os
 import json
 import uuid
 from flask import Flask, render_template, request
-from analysis4 import analyze_spectrum  # import the function
+from analysis import analyze_spectrum  # import the function
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
