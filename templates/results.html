@@ -105,6 +105,10 @@
         <tbody>
             <tr>
                 <td>
+                    <p>Spectrum with identified peaks marked:</p>
+                    <img src="{{ url_for('static', filename=spectrum_graph) }}" alt="Spectrum Graph">
+                </td>
+                <td>
                     Mass Results: 
                     <ul>
                         {% for parent in results %}
@@ -137,7 +141,7 @@
                 </td>
                 <td>
                     Mass Plot
-                    <img src="{{ url_for('static', filename=results_graph) }}" alt="Spectrum Plot">
+                    <img src="{{ url_for('static', filename=results_graph) }}" alt="Mass Plot">
                 </td>
             </tr>
             <tr>

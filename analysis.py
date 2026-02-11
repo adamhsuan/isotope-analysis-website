@@ -20,23 +20,15 @@ from uncertainties import nominal_value
 import pandas as pd
 import os
 import uuid
+from types import BuiltinMethodType
 
 def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_output="static/plot.png"):
 
     NA = 6.022e23
-
     RADIUS = 2
     MIN_PEAK_COUNTS = 1000
-    EFFICIENCY="2019_NAA_eff_calibration_parameters.json"
     CHECK_LIMIT=4
-    MAX_UNCERTAINTY_PROPORTION = 0.1 #max uncertainty/counts
     MAX_DAUGHTERS_TO_FLAG_PARENT = 3 #max number of daughter isotopes to flag a parent isotope
-    PEAK_STANDARD_DEVIATION_UNCERTAINTY_CUTOFF = 1000
-    UNCALIBRATED_COUNTS_CUTOFF = 1000
-    MIN_BOUNDS_MULTIPLIER = 1
-    #change based on files used:
-    #DETECTOR_EFFICIENCY = "2019_NAA_eff_calibration_parameters.json"
-    DETECTOR_EFFICIENCY = "2019_NAA_eff_calibration_parameters.json"
     ENERGIES_TOO_CLOSE_CUTOFF = 3
     isotopes_dictionary = {
         "U-238": {
@@ -171,7 +163,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         }
     }
     
-    from types import BuiltinMethodType
     #finds the closest bin to a specific energy value
     def closest_bin(value, bins):
         difference = np.abs(value - bins)
@@ -183,14 +174,16 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         fix, ax = plt.subplots(figsize = (10, 6))
         ax.set_yscale('log')
         ax.set_title('Background Subtracted Soil Spectrum')
-        print("TEST>>>>")
-
-        print(spec.bin_centers_kev)
         ax.set_xlim(0, np.max(spec.bin_centers_kev))
         spec.plot(ax=ax)
         indexes = [closest_bin(energy, spec.bin_centers_kev) for energy in energies]
         ax.vlines(indexes, ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5)
-
+        filename = f"plot_{uuid.uuid4().hex}.png"
+        filepath = os.path.join("static", filename)
+        plt.savefig(filepath, bbox_inches="tight", dpi=200)
+        plt.close()
+        return filename
+    
     #graphs the spectrum zoomed in by a certain amount:
     def graph_peak(spec,energy,title,bounds,baseline):
         global unorganized_energy_graphs
@@ -208,20 +201,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         plt.savefig(filepath, bbox_inches="tight", dpi=200)
         plt.close()
         return filename
-
-    def graph_bounds(spec,energy,title,peak=None,leftbound=None,rightbound=None,baseline=None):
-        fig, ax = plt.subplots(figsize = (10,3))
-        ax.set_xlim(energy-15*RADIUS,energy+15*RADIUS)
-        ax.set_ylim(-0.01,0.02)
-        ax.set_title(title)
-        spec.plot(ax=ax)
-        if baseline!=None:
-            plt.axhline(y=baseline, color='y', linestyle='--', label='y=5')
-        if peak!=None:
-            ax.vlines([peak],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5)
-        if leftbound!=None and rightbound!=None:
-            min_bounds = [leftbound, rightbound]
-            ax.vlines(min_bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.5)
 
     #inverts the isotopes dictionary, such that it obtains the format: {daughter_isotope_energy: [daughter_isotope_name, parent_isotope]}
     def get_inverted_isotopes_dictionary(isotopes_dictionary):
@@ -266,21 +245,7 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                 least_counts_bin_left=radius_left
                 least_counts_right=data[radius_right]
                 least_counts_bin_right=radius_right
-                """
-                for bin in data.keys():
-                    if bin >= radius_left and bin <= radius_right:
-                        if data[bin]>greatest_counts:
-                            greatest_counts=data[bin]
-                            greatest_counts_bin = bin
-                for bin in data.keys():
-                    if bin >= radius_left*MIN_BOUNDS_MULTIPLIER and bin <= radius_right*MIN_BOUNDS_MULTIPLIER:
-                        if bin<greatest_counts_bin and data[bin]<least_counts_left:
-                            least_counts_left=data[bin]
-                            least_counts_bin_left = bin
-                        if bin>greatest_counts_bin and data[bin]<least_counts_right:
-                            least_counts_right=data[bin]
-                            least_counts_bin_right = bin
-                """
+
                 for bin in data.keys():
                     if bin >= radius_left and bin <= radius_right:
                         if data[bin]<least_counts_left and bin<=the_energy:
@@ -301,16 +266,13 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                             baseline_adjusted_counts += delta
                         #baseline_adjusted_counts+=(nominal_value(data[bin])-baseline)*livetime
                         unadjusted_integral+=nominal_value(data[bin])*livetime
-                        print(f"bin: {bin}, counts: {nominal_value(data[bin])}, baseline: {baseline}, baseline adjusted counts: {(nominal_value(data[bin])-baseline)*livetime}")    
                 if baseline_adjusted_counts > max_baseline_adjusted_counts:
                     max_baseline_adjusted_counts=baseline_adjusted_counts
                 if baseline_adjusted_counts > MIN_PEAK_COUNTS:
                     integral = baseline_adjusted_counts
-                    print(f"Found sufficient counts for peak at {energy} keV: {integral} counts (baseline subtracted).")
                     break
                 elif abs(energy-the_energy) > CHECK_LIMIT:
                     integral = max_baseline_adjusted_counts
-                    print(f"Warning: could not find sufficient counts for peak at {energy} keV; using maximum found value of {max_baseline_adjusted_counts} counts.")   
                     break
                 else:
                     the_energy+=0.1*(-1)**n*(n+1)
@@ -330,11 +292,9 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
                 gamma_yield = gamma_yield_value
                 break
         if gamma_yield == 0:
-            print(f"Warning: gamma yield not found for {parent_isotope} -> {daughter_isotope} at {energy} keV; skipping mass prediction.")
             return [0,0]
         decay_constant=math.log(2) / isotopes_dictionary[parent_isotope]['half_life']
         molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
-        #assuming secular equilibrium (parent isotope counts = daughter isotope counts)
         predicted_parent_mass = counts * molar_mass / (NA * gamma_yield * decay_constant * livetime)
         predicted_parent_mass_uncertainty = unc * molar_mass / (NA * gamma_yield * decay_constant * livetime)
         return [predicted_parent_mass,predicted_parent_mass_uncertainty]
@@ -365,7 +325,6 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         for i in range(len(energies)):
             eff = eff_func.get_eff(energies[i])
             if eff == 0 or eff is None:
-                print(f"Warning: zero detector efficiency for energy {energies[i]} keV; setting calibrated counts to 0.")
                 calibrated_counts.append(0)
                 calibrated_counts_unc.append(0)
             else:
@@ -375,33 +334,15 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
         counts_unc = calibrated_counts_unc
         #creates dictionary containing isotope counts and mass info
         isotopes_in_sample_info = {}
-        """
-        pf = PF(energies, spec, bg)
-        pf_uncalibrated_counts, pf_counts_unc = pf.get_counts()
-        pf_counts = []
-        for i in range(len(energies)):
-            eff = eff_func.get_eff(energies[i])
-            if eff == 0 or eff is None:
-                pf_counts.append(0)
-            else:
-                pf_counts.append(pf_uncalibrated_counts[i]/eff)
-        """
         for i in range(len(energies)):
             title=""
             ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i]
             
-            #pf_uncalibrated_daughter_counts, pf_daughter_counts, pf_daughter_counts_unc = pf_uncalibrated_counts[i], pf_counts[i], pf_counts_unc[i]
             parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
             predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,daughter_counts,unc,spec.livetime)
-            #pf_predicted_parent_mass, pf_predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,pf_daughter_counts,pf_daughter_counts_unc,spec.livetime)
             if parent_isotope not in isotopes_in_sample_info:
                 isotopes_in_sample_info[parent_isotope] = {}
-            #if daughter_counts!=0 and uncalibrated_daughter_counts>=UNCALIBRATED_COUNTS_CUTOFF:
             isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "counts": daughter_counts, "counts unc": unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
-            #title+=f"ene: {ene}keV, parent: {parent_isotope}, daughter: {daughter_isotope}, uncalibrated counts: {uncalibrated_daughter_counts} counts: {daughter_counts:.2e}, uncertainty: {unc}, unc/ud_counts: {unc/uncalibrated_daughter_counts}, predicted parent mass: {predicted_parent_mass:.2e}g"
-            #graph_peak(subtracted_spec,ene,title,RADIUS)
-            #print(f"Results for {ene}keV peak using PF: uncalibrated counts: {pf_uncalibrated_daughter_counts}, counts: {pf_daughter_counts}, counts_unc: {pf_daughter_counts_unc}, predicted_parent_mass: {pf_predicted_parent_mass}g, predicted_parent_mass_unc: {pf_predicted_parent_mass_unc}g")
-            #pf.plot_roi(ene)
             title = f"{ene} daughter_counts: {daughter_counts:.2e} unc: {unc:.2e} uncalibrated_daughter_counts: {uncalibrated_daughter_counts:.2e} predicted_parent_mass: {predicted_parent_mass:.2e} predicted_parent_mass_unc: {predicted_parent_mass_unc:.2e}"
             graph = graph_peak(subtracted_spec, ene, title, daughter_bounds, baseline)
             energy_graphs[ene].append(graph)
@@ -566,6 +507,8 @@ def analyze_spectrum(spectrum_path, background_path, efficiency_path, plot_outpu
             #printstatement+=f"\n{parent_isotope}: mass: {mass:.2e}g, unc: {unc:.2e}"
             #printstatement+=f"\nflagged isotopes: {flagged_isotopes}"
         returnstatement["isotopes_info"]=isotopes_info
+        returnstatement["flagged_isotopes"]=flagged_isotopes
+        returnstatement["spectrum_graph"] = graph_spectrum(spec, list(get_inverted_isotopes_dictionary(isotopes_dictionary).keys()))
         returnstatement["isotopes_dictionary"]=isotopes_dictionary
         returnstatement["results_graph"] = create_results_graph(returnstatement["results"])
         returnstatement["daughters_graphs"] = create_daughters_graphs(isotopes_info)
