@@ -29,6 +29,7 @@ CHECK_LIMIT=4
 MAX_DAUGHTERS_TO_FLAG_PARENT = 3 #max number of daughter isotopes to flag a parent isotope
 ENERGIES_TOO_CLOSE_CUTOFF = 3
 
+#isotopes_dictionary contains info about parent isotopes and their daughter isotopes, which is used to estimate parent isotoepe masses
 isotopes_dictionary = {
     "U-238": {
         "half_life": 4.468e9 * 365.25 * 24 * 3600,
@@ -500,32 +501,53 @@ def get_daughters_energies():
     return daughters_energies
 
 # ANALYZE THE SPECTRUM GETS THE ISOTOPE INFO AND CREATES THE GRAPHS, THEN RETURNS IT INTO APP.PY TO BE RENDERED IN THE RESULTS PAGE
-
-# This is the function for the main program execution. calls the above functions to get the isotopes info and convert it into masses. Prints out the isotope masses.
 def analyze_spectrum(spectrum_path,background_path,efficiency):
+    #creates spectrum objects from the spectrum and background files
     spec = Spectrum.from_file(spectrum_path)
     bg = Spectrum.from_file(background_path)
     
-    #spec.calibrate_like(bg)
+    #calibrates background and and spectrum to match energy bins
     bg = bg.rebin(spec.bin_edges_kev)
+
+    #gets isotopes info, which is the counts and predicted parent masses from each daughter energy
     isotopes_info,energy_graphs = get_isotopes_info(spec,bg,isotopes_dictionary,efficiency)
+
+    #estimates the parent masses based on the masses of the daughter isotopes
     masses,flagged_isotopes = estimate_aggregated_masses_and_uncertainties(isotopes_info, isotopes_dictionary)
+
     returnstatement={}
+
+    #spectrum graph is a graph that displays the entire spectrum counts and energies
+    returnstatement["spectrum_graph"] = graph_spectrum(spec, list(get_inverted_isotopes_dictionary(isotopes_dictionary).keys()))
+
+    #results is used to list the masses and uncertainties of the parent isotopes
     returnstatement["results"]=[]
     for parent_isotope in masses:
         mass,unc = masses[parent_isotope]
         returnstatement["results"].append([parent_isotope,mass,unc])
-    returnstatement["isotopes_info"]=isotopes_info
-    returnstatement["flagged_isotopes"]=flagged_isotopes
-    returnstatement["spectrum_graph"] = graph_spectrum(spec, list(get_inverted_isotopes_dictionary(isotopes_dictionary).keys()))
-    returnstatement["isotopes_dictionary"]=isotopes_dictionary
+
+    #results graph displays the mass predictions in a bar graph
     returnstatement["results_graph"] = create_results_graph(returnstatement["results"])
+
+    #daughters graphs are the graphs corresponding to each parent isotope which showing the mass predictions per daughter isotope
     returnstatement["daughters_graphs"] = create_daughters_graphs(isotopes_info)
+
+    #daughters_energies gives the energies for each daughter isotope, used to create buttons for eneriges that pop up when daughter energy button is clicked
+    returnstatement["daughters_energies"] = get_daughters_energies()
+
+    #energy graphs are the graphs of individual energies, zoomed in on the spectrum. only_energies_graphs contains that info in a different data structure (energy->graph) for ease of access 
     returnstatement["energy_graphs"] = energy_graphs
     returnstatement["only_energies_graphs"] = get_only_energies_graphs(energy_graphs)
-    returnstatement["daughters_energies"] = get_daughters_energies()
+
+    #key graphs contains important graphs like U-235 to U-238 ratio which are displayed seperately
     returnstatement["key_graphs"] = get_key_graphs(returnstatement["results"])
     returnstatement["conclusions"] = "no conclusions yet"
+
+    #the following keys of returnstatement contain info for the debug panel 
+    returnstatement["isotopes_info"]=isotopes_info
+    returnstatement["flagged_isotopes"]=flagged_isotopes
+    returnstatement["isotopes_dictionary"]=isotopes_dictionary
+
     return returnstatement
 
 #isotopes_dictionary = remove_close_energies(isotopes_dictionary)
