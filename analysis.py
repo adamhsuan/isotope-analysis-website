@@ -26,7 +26,6 @@ NA = 6.022e23
 RADIUS = 2
 MIN_PEAK_COUNTS = 1000
 CHECK_LIMIT=4
-MAX_DAUGHTERS_TO_FLAG_PARENT = 3 #max number of daughter isotopes to flag a parent isotope
 ENERGIES_TOO_CLOSE_CUTOFF = 3
 
 #isotopes_dictionary contains info about parent isotopes and their daughter isotopes, which is used to estimate parent isotoepe masses
@@ -163,7 +162,8 @@ isotopes_dictionary = {
     }
 }
 
-# THE FOLLOWING FUNCTIONS ARE USED TO ESTIMATE THE MASSES OF PARENT ISOTOPES BASED ON THE GAMMA EMMISIONS OF THEIR DAUGHTER ISOTOPES 
+""" THE FOLLOWING FUNCTIONS ARE USED TO ESTIMATE THE MASSES OF PARENT ISOTOPES BASED ON THE GAMMA EMMISIONS OF THEIR DAUGHTER ISOTOPES 
+"""
 
 #helper function for get_counts. finds the closest bin to a specific energy value
 def closest_bin(value, bins):
@@ -270,18 +270,28 @@ def reorganize_energy_graphs(energy_graphs):
 
 #returns a dictionary with format... parent isotope 1: {daugther isotope energy 1: [daughter isotope, counts, unc, predicted parent mass, predicted parent mass unc]}... for each parent and daughter isotope energy believed to be in the sample
 def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
+    #sets up the efficiency function
     eff_func = am.Efficiency()
     eff_func.set_parameters(efficiency)
+
+    #puts isotopes_dictionary in an order that eases use for the rest of the function
     inverted_isotopes_dictionary = get_inverted_isotopes_dictionary(isotopes_dictionary)
+
     energies = list(inverted_isotopes_dictionary.keys())
     energy_graphs = get_inverted_isotopes_dictionary(isotopes_dictionary)
+
     subtracted_spec=spec-bg
+
+    #gets the counts at each energy
     counts, counts_unc, bounds, baselines = get_counts(subtracted_spec,energies,RADIUS,spec.livetime)
-    #gets the counts and count uncertainties
+
     #calibrates counts and counts_unc to detector efficiency (guard against zero efficiency)
     uncalibrated_counts = counts
+
     calibrated_counts = []
     calibrated_counts_unc = []
+
+    #gets the actual counts based on the detector counts by encorperating the efficiency function
     for i in range(len(energies)):
         eff = eff_func.get_eff(energies[i])
         if eff == 0 or eff is None:
@@ -290,35 +300,47 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
         else:
             calibrated_counts.append(counts[i]/eff)
             calibrated_counts_unc.append(counts_unc[i]/eff)
+
+    #sets the counts and counts_unc variables equal to the actual counts and counts_unc
     counts = calibrated_counts
     counts_unc = calibrated_counts_unc
+
     #creates dictionary containing isotope counts and mass info
     isotopes_in_sample_info = {}
     for i in range(len(energies)):
         title=""
+        #gets the isotopes info values for each energy
         ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i]
         
+        #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
+        
+        #gets the predicted parent mass and unc based on the isotopes info for that energy
         predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,daughter_counts,unc,spec.livetime)
+        
+        #creates the dictionary by adding isotope info by energy to parent isotope
         if parent_isotope not in isotopes_in_sample_info:
             isotopes_in_sample_info[parent_isotope] = {}
         isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "counts": daughter_counts, "counts unc": unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
+        
+        #creates another dictionary with the energy graphs for each energy
         title = f"{ene} daughter_counts: {daughter_counts:.2e} unc: {unc:.2e} uncalibrated_daughter_counts: {uncalibrated_daughter_counts:.2e} predicted_parent_mass: {predicted_parent_mass:.2e} predicted_parent_mass_unc: {predicted_parent_mass_unc:.2e}"
         graph = graph_peak(subtracted_spec, ene, title, daughter_bounds, baseline)
         energy_graphs[ene].append(graph)
+
+    # reorganizes the energy graph data structure for easier access in the template    
     energy_graphs = reorganize_energy_graphs(energy_graphs)
+
     return isotopes_in_sample_info,energy_graphs
 
 # returns a dictionary with parent isotopes and their estimated masses and uncertainties
-def estimate_aggregated_masses_and_uncertainties(isotopes_info, isotopes_dictionary):
-    flagged_isotopes = []
+def estimate_aggregated_masses_and_uncertainties(isotopes_info):
     estimated_parent_masses = {}
     for parent_isotope in isotopes_info:
         sum=0
         denominator=0
-        if len(isotopes_info[parent_isotope]) < MAX_DAUGHTERS_TO_FLAG_PARENT:
-            flagged_isotopes.append(parent_isotope)
-
+        
+        #loops through each energy corresponding to a parent isotope, and combines the predicted parent mass values and uncertainties while maintaining error propegation
         for ene in isotopes_info[parent_isotope]:
             daughter_isotope, counts, unc, predicted_parent_mass, predicted_parent_mass_unc = isotopes_info[parent_isotope][ene].values()
             if unc==0 or predicted_parent_mass_unc==0:
@@ -326,6 +348,7 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info, isotopes_diction
             sum += predicted_parent_mass/predicted_parent_mass_unc**2
             denominator += 1/predicted_parent_mass_unc**2
                 
+        # ensures no division by zero. completes average via error propegation formula
         if len(isotopes_info[parent_isotope])!=0:
             if denominator != 0:
                 sum /= denominator
@@ -336,7 +359,7 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info, isotopes_diction
                 total_unc = 0
 
         estimated_parent_masses[parent_isotope] = [sum,total_unc]
-    return [estimated_parent_masses,flagged_isotopes]
+    return [estimated_parent_masses]
 
 #helper function for remove_close energies. Checks if a given energy is within a certain cutoff of another energy from a different daughter isotope of the same parent (only for U-235 and Pu-239, where there are many low-energy gammas that can be close to each other and cause confusion in analysis)
 def energy_close_to_another(parent_isotope,daughter_isotope,energy):
@@ -361,7 +384,8 @@ def remove_close_energies(isotopes_dictionary):
     print(new_isotopes_dictionary)
     return new_isotopes_dictionary
 
-# THE FOLLOWING FUNCTIONS ARE FOR CREATING GRAPHS 
+""" THE FOLLOWING FUNCTIONS ARE FOR CREATING GRAPHS 
+"""
 
 #graphs the spectrum with lines indicating energies we are checking
 def graph_spectrum(spec, energies):
@@ -485,7 +509,8 @@ def get_key_graphs(results):
     plt.close()
     return filename
 
-# THE FOLLOWING FUNCTIONS CREATE NEW DATA STRUCTURES BASED ON THE ISOTOPE INFO TO BE USED IN THE TEMPLATE RENDERING
+""" THE FOLLOWING FUNCTIONS CREATE NEW DATA STRUCTURES BASED ON THE ISOTOPE INFO TO BE USED IN THE TEMPLATE RENDERING
+"""
 def get_daughters_energies():
     daughters_energies={}
     for parent in isotopes_dictionary:
@@ -500,7 +525,8 @@ def get_daughters_energies():
                     daughters_energies[daughter].append(energy)
     return daughters_energies
 
-# ANALYZE THE SPECTRUM GETS THE ISOTOPE INFO AND CREATES THE GRAPHS, THEN RETURNS IT INTO APP.PY TO BE RENDERED IN THE RESULTS PAGE
+""" ANALYZE THE SPECTRUM GETS THE ISOTOPE INFO AND CREATES THE GRAPHS, THEN RETURNS IT INTO APP.PY TO BE RENDERED IN THE RESULTS PAGE
+"""
 def analyze_spectrum(spectrum_path,background_path,efficiency):
     #creates spectrum objects from the spectrum and background files
     spec = Spectrum.from_file(spectrum_path)
@@ -513,7 +539,7 @@ def analyze_spectrum(spectrum_path,background_path,efficiency):
     isotopes_info,energy_graphs = get_isotopes_info(spec,bg,isotopes_dictionary,efficiency)
 
     #estimates the parent masses based on the masses of the daughter isotopes
-    masses,flagged_isotopes = estimate_aggregated_masses_and_uncertainties(isotopes_info, isotopes_dictionary)
+    masses = estimate_aggregated_masses_and_uncertainties(isotopes_info)
 
     returnstatement={}
 
@@ -545,7 +571,6 @@ def analyze_spectrum(spectrum_path,background_path,efficiency):
 
     #the following keys of returnstatement contain info for the debug panel 
     returnstatement["isotopes_info"]=isotopes_info
-    returnstatement["flagged_isotopes"]=flagged_isotopes
     returnstatement["isotopes_dictionary"]=isotopes_dictionary
 
     return returnstatement

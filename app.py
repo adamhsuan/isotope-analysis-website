@@ -123,7 +123,6 @@ def upload_files():
             "results.html",
             results = the_results["results"],
             spectrum_graph = the_results["spectrum_graph"],
-            flagged_isotopes = the_results.get("flagged_isotopes", []),
             results_graph = the_results["results_graph"],
             daughters_graphs = daughters_graphs_var,
             energy_graphs = the_results["energy_graphs"],
