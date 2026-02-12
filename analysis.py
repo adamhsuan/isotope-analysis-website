@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import sys
 import math
 import json
-from PF import PF
 import analysis_methods as am
 import math
 from uncertainties import nominal_value
