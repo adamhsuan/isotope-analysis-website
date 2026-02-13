@@ -373,7 +373,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
         
         #creates another dictionary with the energy graphs for each energy
         title = f"{ene} daughter_counts: {daughter_counts:.2e} unc: {unc:.2e} uncalibrated_daughter_counts: {uncalibrated_daughter_counts:.2e} predicted_parent_mass: {predicted_parent_mass:.2e} predicted_parent_mass_unc: {predicted_parent_mass_unc:.2e}"
-        graph = graph_peak(subtracted_spec, ene, title, daughter_bounds, baseline)
+        graph = create_peak_graph(subtracted_spec, ene, title, daughter_bounds, baseline)
         energy_graphs[ene].append(graph)
 
     # reorganizes the energy graph data structure for easier access in the template    
@@ -441,7 +441,7 @@ def remove_close_energies(isotopes_dictionary):
 """
 
 #graphs the spectrum with lines indicating energies we are checking
-def graph_spectrum(spec, energies):
+def create_spectrum_graph(spec, energies):
     energies = np.array(energies)
     fix, ax = plt.subplots(figsize = (10, 6))
     ax.set_yscale('log')
@@ -456,7 +456,7 @@ def graph_spectrum(spec, energies):
     plt.close()
     return filename
 
-def graph_peak(spec,energy,title,bounds,baseline):
+def create_peak_graph(spec,energy,title,bounds,baseline):
     global unorganized_energy_graphs
     plt.figure()
     fig, ax = plt.subplots(figsize = (10,3))
@@ -536,15 +536,7 @@ def create_daughters_graphs(isotopes_info):
         daughters_graphs[parent] = filename
     return daughters_graphs
 
-def get_only_energies_graphs(energies_graphs):
-    only_energies_graphs={}
-    for parent in energies_graphs:
-        for daughter in energies_graphs[parent]:
-            for energy in energies_graphs[parent][daughter]:
-                only_energies_graphs[energy]=energies_graphs[parent][daughter][energy]
-    return only_energies_graphs
-
-def get_key_graphs(results):
+def create_key_graphs(results):
     desired = ["U-238","U-235"]
     result_dict = {r[0]: r[1] for r in results}
     labels = [l for l in desired if l in result_dict]
@@ -578,6 +570,14 @@ def get_daughters_energies():
                     daughters_energies[daughter].append(energy)
     return daughters_energies
 
+def get_only_energies_graphs(energies_graphs):
+    only_energies_graphs={}
+    for parent in energies_graphs:
+        for daughter in energies_graphs[parent]:
+            for energy in energies_graphs[parent][daughter]:
+                only_energies_graphs[energy]=energies_graphs[parent][daughter][energy]
+    return only_energies_graphs
+
 """ analyze_the_spectrum gets the isotope info and creates the graphs, then returns it into app.py to be rendered in the results page
 """
 def analyze_spectrum(spectrum_path,background_path,efficiency):
@@ -600,7 +600,7 @@ def analyze_spectrum(spectrum_path,background_path,efficiency):
     returnstatement={}
 
     #spectrum graph is a graph that displays the entire spectrum counts and energies
-    returnstatement["spectrum_graph"] = graph_spectrum(spec, list(get_inverted_isotopes_dictionary(isotopes_dictionary).keys()))
+    returnstatement["spectrum_graph"] = create_spectrum_graph(spec, list(get_inverted_isotopes_dictionary(isotopes_dictionary).keys()))
 
     #results is used to list the masses and uncertainties of the parent isotopes
     returnstatement["results"]=[]
@@ -622,7 +622,7 @@ def analyze_spectrum(spectrum_path,background_path,efficiency):
     returnstatement["only_energies_graphs"] = get_only_energies_graphs(energy_graphs)
 
     #key graphs contains important graphs like U-235 to U-238 ratio which are displayed seperately
-    returnstatement["key_graphs"] = get_key_graphs(returnstatement["results"])
+    returnstatement["key_graphs"] = create_key_graphs(returnstatement["results"])
     returnstatement["conclusions"] = "no conclusions yet"
 
     #the following keys of returnstatement contain info for the debug panel 
