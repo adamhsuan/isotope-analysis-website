@@ -390,11 +390,16 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
         
         #loops through each energy corresponding to a parent isotope, and combines the predicted parent mass values and uncertainties while maintaining error propegation
         for ene in isotopes_info[parent_isotope]:
-            daughter_isotope, counts, unc, predicted_parent_mass, predicted_parent_mass_unc = isotopes_info[parent_isotope][ene].values()
-            if unc==0 or predicted_parent_mass_unc==0:
-                predicted_parent_mass_unc=1e12 #arbitrarily large uncertainty to effectively ignore this value
-            sum += predicted_parent_mass/predicted_parent_mass_unc**2
-            denominator += 1/predicted_parent_mass_unc**2
+            entry = isotopes_info[parent_isotope][ene]
+            daughter_isotope = entry["daughter_isotope"]
+            counts = entry["counts"]
+            unc = entry["counts unc"]
+            predicted_parent_mass = entry["predicted_parent_mass"]
+            predicted_parent_mass_unc = entry["predicted_parent_mass_unc"]
+            if unc == 0 or predicted_parent_mass_unc == 0:
+                predicted_parent_mass_unc = 1e12  # arbitrarily large uncertainty to effectively ignore this value
+            sum += predicted_parent_mass / predicted_parent_mass_unc ** 2
+            denominator += 1 / predicted_parent_mass_unc ** 2
                 
         # ensures no division by zero. completes average via error propegation formula
         if len(isotopes_info[parent_isotope])!=0:
@@ -407,7 +412,7 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
                 total_unc = 0
 
         estimated_parent_masses[parent_isotope] = [sum,total_unc]
-    return [estimated_parent_masses]
+    return estimated_parent_masses
 
 #helper function for remove_close energies. Checks if a given energy is within a certain cutoff of another energy from a different daughter isotope of the same parent (only for U-235 and Pu-239, where there are many low-energy gammas that can be close to each other and cause confusion in analysis)
 def energy_close_to_another(parent_isotope,daughter_isotope,energy):
