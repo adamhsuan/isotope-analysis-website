@@ -1,3 +1,10 @@
+"""
+This file contains the main analysis functions for the web app which take spectrum and background
+files as input and return the estimated parent isotope masses and graphs to be rendered in the results page. 
+The main function is analyze spectrum, which calls the other functions to get the isotope info, create the graphs,
+and return the result in a format that can be easily rendered in the template.
+"""
+
 import os
 import json
 import becquerel as bq
@@ -161,7 +168,7 @@ isotopes_dictionary = {
     }
 }
 
-""" THE FOLLOWING FUNCTIONS ARE USED TO ESTIMATE THE MASSES OF PARENT ISOTOPES BASED ON THE GAMMA EMMISIONS OF THEIR DAUGHTER ISOTOPES 
+""" the following functions are used to estimate the masses of parent isotopes based on the gamma emmisions of their daughter isotopes
 """
 
 #helper function for get_counts. finds the closest bin to a specific energy value
@@ -169,78 +176,120 @@ def closest_bin(value, bins):
     difference = np.abs(value - bins)
     return bins[np.argmin(difference)]
 
-#takes dictionary of the form {ene: [daughter, parent, graph]} and returns {parent: {daughter: {ene: graph}}}            
+#get_counts determines the counts under the peaks for each energy.
 def get_counts(spec,energies,RADIUS,livetime):
+
+    #list containing the energy and cps per energy bin for the spectrum
     data = dict(zip(spec.energies_kev,spec.cps))
+    
     counts=[]
     counts_unc=[]
+    
+    #bounds are the energy values of the left and right of the peak. We keep track of them for graphing
     bounds=[]
+    
+    #baselines are floors subtracted away from the peak to avoid counting background noise. We keep track of them for graphing as well.
     baselines=[]
+
     for energy in energies:
+
+        #the_energy is the current peak center we are checking. we will adjust this value if we find a stronger peak nearby
         the_energy = energy
+        
+        #n is used to adjust the energy in a pattern spiraling outward from the original energy value, to find the strongest peak
         n=1
+        
+        #max_baseline_adjusted_counts keeps track of the strongest peak found
         max_baseline_adjusted_counts=0
+
         while True:
+            
             integral=0
+
+            #radius is the maximum distance from the current energy value we check for the bounds of the peak
             radius_left = closest_bin(the_energy-RADIUS,spec.energies_kev)
             radius_right = closest_bin(the_energy+RADIUS,spec.energies_kev)
-            #greatest_counts=0
+
             least_counts_left=data[radius_left]
             least_counts_bin_left=radius_left
             least_counts_right=data[radius_right]
             least_counts_bin_right=radius_right
 
             for bin in data.keys():
+                #checks the cps at each bin within the radius of the current energy value
                 if bin >= radius_left and bin <= radius_right:
-                    if data[bin]<least_counts_left and bin<=the_energy:
+                    #if bin on the left side of the peak and has less cps than the least counts on the left, move the least counts outward
+                    if bin<=the_energy and data[bin]<least_counts_left:
                         least_counts_left=data[bin]
                         least_counts_bin_left = bin
-                    if data[bin]<least_counts_right and bin>=the_energy:
+                    #if bin on the right side of the peak and has less cps than the least counts on the right, move the least counts outward
+                    if bin>=the_energy and data[bin]<least_counts_right:
                         least_counts_right=data[bin]
                         least_counts_bin_right = bin
+
             baseline_adjusted_counts=0
             baseline=0
             unadjusted_integral=0
-            #if greatest_counts_bin >= radius_left and greatest_counts_bin <= radius_right:
+
+            #baseline is set as the higher of the least counts on either side of the peak
             baseline = max(float(nominal_value(least_counts_left)),float(nominal_value(least_counts_right)))
+
+            #iterates over the bins within the radius, adds the baseline adjusted counts for the particular energy (delta) to the integral
             for bin in data.keys():
                 if bin >= least_counts_bin_left and bin <= least_counts_bin_right:
                     delta = (nominal_value(data[bin]) - baseline) * livetime
                     if delta > 0:
                         baseline_adjusted_counts += delta
-                    #baseline_adjusted_counts+=(nominal_value(data[bin])-baseline)*livetime
+                    #unadjusted_integral keeps track of the total counts without baseline adjustement
                     unadjusted_integral+=nominal_value(data[bin])*livetime
+
+            #checks if the baseline adjusted counts for this energy is the strongest peak so far and updates if so
             if baseline_adjusted_counts > max_baseline_adjusted_counts:
                 max_baseline_adjusted_counts=baseline_adjusted_counts
+            
+            #if the baseline adjusted counts is above the minimum peak counts, we consider it a peak and stop spiraling outward
             if baseline_adjusted_counts > MIN_PEAK_COUNTS:
                 integral = baseline_adjusted_counts
                 break
+
+            #if we reach the end of the spiral pattern without finding a strong enough peak, we take the strongest peak found
             elif abs(energy-the_energy) > CHECK_LIMIT:
                 integral = max_baseline_adjusted_counts
                 break
+
+            #otherwise continue spiraling out searching for peaks
             else:
                 the_energy+=0.1*(-1)**n*(n+1)
                 n+=1
+
         counts.append(integral)
         bounds.append([least_counts_bin_left,least_counts_bin_right])
         counts_unc.append(math.sqrt(abs(integral)))
         baselines.append(baseline)
-        # graphs are created in get_isotopes_info tpyo include more context in titles; avoid duplicating here
+
     return [counts,counts_unc,bounds,baselines]
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
 def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime):
+
+    #gets the gamma yeild for the energy
     gamma_yield = 0
     for daughter_energy, gamma_yield_value in isotopes_dictionary[parent_isotope]["daughter_isotopes"][daughter_isotope]:
         if daughter_energy == energy:
             gamma_yield = gamma_yield_value
             break
+
     if gamma_yield == 0:
         return [0,0]
+    
+    #decay constant is calculated based on the half life of the parent isotope
     decay_constant=math.log(2) / isotopes_dictionary[parent_isotope]['half_life']
+
     molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
+    
     predicted_parent_mass = counts * molar_mass / (NA * gamma_yield * decay_constant * livetime)
     predicted_parent_mass_uncertainty = unc * molar_mass / (NA * gamma_yield * decay_constant * livetime)
+
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
 #helper function for get_isotopes_info. inverts the isotopes dictionary, such that it obtains the format: {daughter_isotope_energy: [daughter_isotope_name, parent_isotope]}
@@ -290,7 +339,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     calibrated_counts = []
     calibrated_counts_unc = []
 
-    #gets the actual counts based on the detector counts by encorperating the efficiency function
+    #gets the actual counts based on the detector counts by incorperating the efficiency function
     for i in range(len(energies)):
         eff = eff_func.get_eff(energies[i])
         if eff == 0 or eff is None:
@@ -383,7 +432,7 @@ def remove_close_energies(isotopes_dictionary):
     print(new_isotopes_dictionary)
     return new_isotopes_dictionary
 
-""" THE FOLLOWING FUNCTIONS ARE FOR CREATING GRAPHS 
+""" the following functions are for creating graphs
 """
 
 #graphs the spectrum with lines indicating energies we are checking
@@ -508,7 +557,7 @@ def get_key_graphs(results):
     plt.close()
     return filename
 
-""" THE FOLLOWING FUNCTIONS CREATE NEW DATA STRUCTURES BASED ON THE ISOTOPE INFO TO BE USED IN THE TEMPLATE RENDERING
+""" the following function creates new data structures based on the isotopes info for easier rendering in the template
 """
 def get_daughters_energies():
     daughters_energies={}
@@ -524,9 +573,12 @@ def get_daughters_energies():
                     daughters_energies[daughter].append(energy)
     return daughters_energies
 
-""" ANALYZE THE SPECTRUM GETS THE ISOTOPE INFO AND CREATES THE GRAPHS, THEN RETURNS IT INTO APP.PY TO BE RENDERED IN THE RESULTS PAGE
+""" analyze_the_spectrum gets the isotope info and creates the graphs, then returns it into app.py to be rendered in the results page
 """
 def analyze_spectrum(spectrum_path,background_path,efficiency):
+    #uncomment the following line to remove energies that are close to each other
+    #isotopes_dictionary = remove_close_energies(isotopes_dictionary)
+
     #creates spectrum objects from the spectrum and background files
     spec = Spectrum.from_file(spectrum_path)
     bg = Spectrum.from_file(background_path)
@@ -574,4 +626,3 @@ def analyze_spectrum(spectrum_path,background_path,efficiency):
 
     return returnstatement
 
-#isotopes_dictionary = remove_close_energies(isotopes_dictionary)
