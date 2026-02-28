@@ -29,7 +29,6 @@ import uuid
 from types import BuiltinMethodType
 
 NA = 6.022e23
-RADIUS = 2
 MIN_PEAK_COUNTS = 1000
 CHECK_LIMIT=4
 ENERGIES_TOO_CLOSE_CUTOFF = 3
@@ -119,7 +118,6 @@ isotopes_dictionary = {
             ],
         }
     },
-
     "Th-232": {
         "half_life": 1.405e10 * 365.25 * 24 * 3600,
         "molar_mass": 232.0380553,
@@ -148,25 +146,29 @@ isotopes_dictionary = {
                 [860.56,12.5],[2614.511,99.79],
             ]
         }
-    },
+    }
 
-    "Pu-239": {
-        "half_life": 24110 * 365.25 * 24 * 3600,
-        "molar_mass": 239.0521634,
-        "daughter_isotopes": {
-            # Pu-239 → U-235 series in secular equilibrium produces the same gammas as U-235 chain:
-            "U-235": [[143.765,10.93],[163.356,5.5],[185.713,57.2],[202.12,5.0],[205.31,5.5]],
-            "Th-231": [[25.65,13.7]],
-            "Pa-231": [[27.36,10.5]],
-            "Th-227": [[235.96,12.9]],
-            "Fr-223": [[50.094,34.0]],
-            "Ra-223": [[269.463,13.3]],
-            "Rn-219": [[271.23,10.8]],
-            "Bi-215": [[293.5,49.0]],
-            "Bi-211": [[351.06,12.91]],
-        }
+}
+
+
+"""
+Pu-239 not in secular equilibrium, so can't be used
+"Pu-239": {
+    "half_life": 24110 * 365.25 * 24 * 3600,
+    "molar_mass": 239.0521634,
+    "daughter_isotopes": {
+        "U-235": [[143.765,10.93],[163.356,5.5],[185.713,57.2],[202.12,5.0],[205.31,5.5]],
+        "Th-231": [[25.65,13.7]],
+        "Pa-231": [[27.36,10.5]],
+        "Th-227": [[235.96,12.9]],
+        "Fr-223": [[50.094,34.0]],
+        "Ra-223": [[269.463,13.3]],
+        "Rn-219": [[271.23,10.8]],
+        "Bi-215": [[293.5,49.0]],
+        "Bi-211": [[351.06,12.91]],
     }
 }
+"""
 
 """ the following functions are used to estimate the masses of parent isotopes based on the gamma emmisions of their daughter isotopes
 """
@@ -177,7 +179,7 @@ def closest_bin(value, bins):
     return bins[np.argmin(difference)]
 
 #get_counts determines the counts under the peaks for each energy.
-def get_counts(spec,energies,RADIUS,livetime):
+def get_counts(spec,energies,livetime):
 
     #list containing the energy and cps per energy bin for the spectrum
     data = dict(zip(spec.energies_kev,spec.cps))
@@ -191,7 +193,12 @@ def get_counts(spec,energies,RADIUS,livetime):
     #baselines are floors subtracted away from the peak to avoid counting background noise. We keep track of them for graphing as well.
     baselines=[]
 
+    #radii are the half-widths of the peaks we are checking. We keep track of them for graphing as well.
+    radii=[]
+
     for energy in energies:
+
+        radius = 1.06*math.sqrt(0.4+0.0024*energy)
 
         #the_energy is the current peak center we are checking. we will adjust this value if we find a stronger peak nearby
         the_energy = energy
@@ -207,8 +214,8 @@ def get_counts(spec,energies,RADIUS,livetime):
             integral=0
 
             #radius is the maximum distance from the current energy value we check for the bounds of the peak
-            radius_left = closest_bin(the_energy-RADIUS,spec.energies_kev)
-            radius_right = closest_bin(the_energy+RADIUS,spec.energies_kev)
+            radius_left = closest_bin(the_energy-radius,spec.energies_kev)
+            radius_right = closest_bin(the_energy+radius,spec.energies_kev)
 
             least_counts_left=data[radius_left]
             least_counts_bin_left=radius_left
@@ -231,8 +238,8 @@ def get_counts(spec,energies,RADIUS,livetime):
             baseline=0
             unadjusted_integral=0
 
-            #baseline is set as the higher of the least counts on either side of the peak
-            baseline = max(float(nominal_value(least_counts_left)),float(nominal_value(least_counts_right)))
+            #baseline is set as the average of the least counts on either side of the peak
+            baseline = (float(nominal_value(least_counts_left)) + float(nominal_value(least_counts_right)))/2
 
             #iterates over the bins within the radius, adds the baseline adjusted counts for the particular energy (delta) to the integral
             for bin in data.keys():
@@ -264,10 +271,11 @@ def get_counts(spec,energies,RADIUS,livetime):
 
         counts.append(integral)
         bounds.append([least_counts_bin_left,least_counts_bin_right])
+        radii.append(radius)
         counts_unc.append(math.sqrt(abs(integral)))
         baselines.append(baseline)
 
-    return [counts,counts_unc,bounds,baselines]
+    return [counts,counts_unc,bounds,baselines,radii]
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
 def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime):
@@ -331,7 +339,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     subtracted_spec=spec-bg
 
     #gets the counts at each energy
-    counts, counts_unc, bounds, baselines = get_counts(subtracted_spec,energies,RADIUS,spec.livetime)
+    counts, counts_unc, bounds, baselines, radii = get_counts(subtracted_spec,energies,spec.livetime)
 
     #calibrates counts and counts_unc to detector efficiency (guard against zero efficiency)
     uncalibrated_counts = counts
@@ -358,7 +366,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     for i in range(len(energies)):
         title=""
         #gets the isotopes info values for each energy
-        ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i]
+        ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline, radius = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i], radii[i]
         
         #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
@@ -373,7 +381,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
         
         #creates another dictionary with the energy graphs for each energy
         title = f"{ene} daughter_counts: {daughter_counts:.2e} unc: {unc:.2e} uncalibrated_daughter_counts: {uncalibrated_daughter_counts:.2e} predicted_parent_mass: {predicted_parent_mass:.2e} predicted_parent_mass_unc: {predicted_parent_mass_unc:.2e}"
-        graph = create_peak_graph(subtracted_spec, ene, title, daughter_bounds, baseline)
+        graph = create_peak_graph(subtracted_spec, ene, title, daughter_bounds, baseline, radius)
         energy_graphs[ene].append(graph)
 
     # reorganizes the energy graph data structure for easier access in the template    
@@ -456,11 +464,11 @@ def create_spectrum_graph(spec, energies):
     plt.close()
     return filename
 
-def create_peak_graph(spec,energy,title,bounds,baseline):
+def create_peak_graph(spec,energy,title,bounds,baseline,radius):
     global unorganized_energy_graphs
     plt.figure()
     fig, ax = plt.subplots(figsize = (10,3))
-    ax.set_xlim(energy-20*RADIUS,energy+20*RADIUS)
+    ax.set_xlim(energy-20*radius,energy+20*radius)
     ax.set_ylim(-0.01,0.03)
     ax.set_title(title)
     spec.plot(ax=ax)
