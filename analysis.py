@@ -219,6 +219,7 @@ def get_counts(spec,energies,livetime):
             least_counts_right=data[radius_right]
             least_counts_bin_right=radius_right
 
+            #estimates the least counts within the radius on either side of the peak (by finding local minima) to set the bounds of integration
             for bin in data.keys():
                 #checks the cps at each bin within the radius of the current energy value
                 if bin >= radius_left and bin <= radius_right:
@@ -247,15 +248,15 @@ def get_counts(spec,energies,livetime):
                     #unadjusted_integral keeps track of the total counts without baseline adjustement
                     unadjusted_integral+=nominal_value(data[bin])*livetime
 
-            #checks if the baseline adjusted counts for this energy is the strongest peak so far and updates if so
-            if baseline_adjusted_counts > max_baseline_adjusted_counts:
-                max_baseline_adjusted_counts=baseline_adjusted_counts
-            
             #if the baseline adjusted counts is above the minimum peak counts, we consider it a peak and stop spiraling outward
             if baseline_adjusted_counts > MIN_PEAK_COUNTS:
                 integral = baseline_adjusted_counts
                 break
 
+            #checks if the baseline adjusted counts for this energy is the strongest peak so far and updates if so
+            if baseline_adjusted_counts > max_baseline_adjusted_counts:
+                max_baseline_adjusted_counts=baseline_adjusted_counts
+            
             #if we reach the end of the spiral pattern without finding a strong enough peak, we take the strongest peak found
             elif abs(energy-the_energy) > CHECK_LIMIT:
                 integral = max_baseline_adjusted_counts
