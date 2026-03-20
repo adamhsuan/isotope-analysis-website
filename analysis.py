@@ -193,9 +193,6 @@ def get_counts(spec,energies,livetime):
     #baselines are floors subtracted away from the peak to avoid counting background noise. We keep track of them for graphing as well.
     baselines=[]
 
-    #radii are the half-widths of the peaks we are checking. We keep track of them for graphing as well.
-    radii=[]
-
     for energy in energies:
 
         radius = 1.06*math.sqrt(0.4+0.0024*energy)
@@ -271,11 +268,10 @@ def get_counts(spec,energies,livetime):
 
         counts.append(integral)
         bounds.append([least_counts_bin_left,least_counts_bin_right])
-        radii.append(radius)
         counts_unc.append(math.sqrt(abs(integral)))
         baselines.append(baseline)
 
-    return [counts,counts_unc,bounds,baselines,radii]
+    return [counts,counts_unc,bounds,baselines]
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
 def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime):
@@ -339,7 +335,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     subtracted_spec=spec-bg
 
     #gets the counts at each energy
-    counts, counts_unc, bounds, baselines, radii = get_counts(subtracted_spec,energies,spec.livetime)
+    counts, counts_unc, bounds, baselines = get_counts(subtracted_spec,energies,spec.livetime)
 
     #calibrates counts and counts_unc to detector efficiency (guard against zero efficiency)
     uncalibrated_counts = counts
@@ -366,7 +362,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     for i in range(len(energies)):
         title=""
         #gets the isotopes info values for each energy
-        ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline, radius = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i], radii[i]
+        ene, unc, daughter_counts, uncalibrated_daughter_counts, daughter_bounds, baseline, radius = energies[i], counts_unc[i], counts[i], uncalibrated_counts[i], bounds[i], baselines[i]
         
         #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
