@@ -329,11 +329,9 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,liveti
     decay_constant=math.log(2) / isotopes_dictionary[parent_isotope]['half_life']
 
     molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
-
-    predicted_parent_mass = counts * molar_mass / (NA * gamma_yield/100 * decay_constant * livetime)
-
-    predicted_parent_mass_uncertainty = unc * molar_mass / (NA * gamma_yield/100 * decay_constant * livetime)
-
+    
+    predicted_parent_mass = counts * molar_mass / (NA * gamma_yield * decay_constant * livetime)
+    predicted_parent_mass_uncertainty = unc * molar_mass / (NA * gamma_yield * decay_constant * livetime)
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -432,15 +430,9 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
             predicted_parent_mass_unc = entry["predicted_parent_mass_unc"]
             if unc == 0 or predicted_parent_mass_unc == 0:
                 predicted_parent_mass_unc = 1e12  # arbitrarily large uncertainty to effectively ignore this value
-
-            #using relative uncertainties for weighted average
-            sum += predicted_parent_mass / (predicted_parent_mass_unc / predicted_parent_mass) ** 2
-            #sum += predicted_parent_mass
-
-            denominator += 1 / (predicted_parent_mass_unc / predicted_parent_mass) ** 2
-            #denominator += 1
-
- 
+            sum += predicted_parent_mass / predicted_parent_mass_unc ** 2
+            denominator += 1 / predicted_parent_mass_unc ** 2
+                
         # ensures no division by zero. completes average via error propegation formula
         if len(isotopes_info[parent_isotope])!=0:
             if denominator != 0:
@@ -696,3 +688,4 @@ def analyze_spectrum(spectrum_path,background_path,efficiency,isotopes_dictionar
     returnstatement["isotopes_dictionary"]=isotopes_dictionary
 
     return returnstatement
+
