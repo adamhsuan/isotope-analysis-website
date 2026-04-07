@@ -59,11 +59,10 @@ isotopes_dictionary = {
             "Tl-210": [
                 [296.0,79.0],[799.6,98.96],[1070.0,12.0],
                 [1210.0,17.0],[1316.0,21.0],
-                # Note: intensities vary in literature; these are typical
             ],
 
             "Hg-206": [
-                [304.896,26.0],  # weaker line but above 0.1%
+                [304.896,26.0],
             ]
         }
     },
@@ -83,11 +82,10 @@ isotopes_dictionary = {
 
             "Th-231": [
                 [25.65,13.7],
-                # Very few gamma rays; only the strongest above ~0.1% are shown
             ],
 
             "Pa-231": [
-                [27.36,10.5],  # low energy, often used for identification
+                [27.36,10.5],
             ],
 
 
@@ -105,7 +103,7 @@ isotopes_dictionary = {
             ],
 
             "Rn-219": [
-                [271.23,10.8],  # only prominent gamma
+                [271.23,10.8],
             ],
 
             "Bi-215": [
@@ -129,7 +127,7 @@ isotopes_dictionary = {
             ],
 
             "Ra-224":[
-                [240.986,4.1],  # primary gamma
+                [240.986,4.1],
             ],
 
             "Pb-212": [
@@ -316,13 +314,13 @@ def get_counts(spec,bg,energies,livetime,efficiency):
 def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime):
 
     #gets the gamma yeild for the energy
-    gamma_yield = 0
-    for daughter_energy, gamma_yield_value in isotopes_dictionary[parent_isotope]["daughter_isotopes"][daughter_isotope]:
+    decay_intensity = 0
+    for daughter_energy, decay_intensity_value in isotopes_dictionary[parent_isotope]["daughter_isotopes"][daughter_isotope]:
         if daughter_energy == energy:
-            gamma_yield = gamma_yield_value
+            decay_intensity = decay_intensity_value
             break
 
-    if gamma_yield == 0:
+    if decay_intensity == 0:
         return [0,0]
 
     #decay constant is calculated based on the half life of the parent isotope
@@ -330,8 +328,8 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,liveti
 
     molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
     
-    predicted_parent_mass = counts * molar_mass / (NA * gamma_yield * decay_constant * livetime)
-    predicted_parent_mass_uncertainty = unc * molar_mass / (NA * gamma_yield * decay_constant * livetime)
+    predicted_parent_mass = counts * molar_mass / (NA * decay_intensity * decay_constant * livetime)
+    predicted_parent_mass_uncertainty = unc * molar_mass / (NA * decay_intensity * decay_constant * livetime)
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -430,11 +428,11 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
             predicted_parent_mass_unc = entry["predicted_parent_mass_unc"]
             if unc == 0 or predicted_parent_mass_unc == 0:
                 predicted_parent_mass_unc = 1e12  # arbitrarily large uncertainty to effectively ignore this value
-            #sum += predicted_parent_mass / (predicted_parent_mass_unc / predicted_parent_mass) ** 2
-            #denominator += 1 / (predicted_parent_mass_unc / predicted_parent_mass)** 2
+            sum += predicted_parent_mass / (predicted_parent_mass_unc / predicted_parent_mass) ** 2
+            denominator += 1 / (predicted_parent_mass_unc / predicted_parent_mass)** 2
             
-            sum+= predicted_parent_mass
-            denominator += 1
+            #sum+= predicted_parent_mass
+            #denominator += 1
         # ensures no division by zero. completes average via error propegation formula
         if len(isotopes_info[parent_isotope])!=0:
             if denominator != 0:
