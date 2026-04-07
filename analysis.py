@@ -417,7 +417,7 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
     for parent_isotope in isotopes_info:
         sum=0
         denominator=0
-
+        total_unc_denominator=0
         #loops through each energy corresponding to a parent isotope, and combines the predicted parent mass values and uncertainties while maintaining error propegation
         for ene in isotopes_info[parent_isotope]:
             entry = isotopes_info[parent_isotope][ene]
