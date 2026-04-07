@@ -329,7 +329,7 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,liveti
     molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
     
     predicted_parent_mass = counts * molar_mass / (NA * decay_intensity * decay_constant * livetime)
-    predicted_parent_mass_uncertainty = unc * molar_mass / (NA * decay_intensity * decay_constant * livetime)
+    predicted_parent_mass_uncertainty =  unc * molar_mass / (NA * decay_intensity * decay_constant * livetime)
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -399,7 +399,6 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
         if parent_isotope not in isotopes_in_sample_info:
             isotopes_in_sample_info[parent_isotope] = {}
         isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "counts": counts, "counts_unc": counts_unc, "uncalibrated_counts": uncalibrated_counts, "uncalibrated_counts_unc": uncalibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
-
         title=str(ene)+"keV spectrum graph"
         subtracted_spec=spec-bg
         graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy)
