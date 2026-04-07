@@ -430,13 +430,12 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
                 predicted_parent_mass_unc = 1e12  # arbitrarily large uncertainty to effectively ignore this value
             sum += predicted_parent_mass / (predicted_parent_mass_unc / predicted_parent_mass) ** 2
             denominator += 1 / (predicted_parent_mass_unc / predicted_parent_mass)** 2
-            total_unc_denominator+= 1/(predicted_parent_mass_unc)**2 
 
         # ensures no division by zero. completes average via error propegation formula
         if len(isotopes_info[parent_isotope])!=0:
             if denominator != 0:
                 sum /= denominator
-                total_unc = 1/total_unc_denominator**0.5
+                total_unc = 1/denominator**0.5
             else:
                 # no valid entries with non-zero uncertainty -> no estimate
                 sum = 0
