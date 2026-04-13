@@ -373,7 +373,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
 
 
     #gets the counts at each energy
-    the_counts, the_counts_unc, the_bounds, baselines, peak_energies = get_counts(spec,bg,energies,spec.livetime,efficiency)
+    the_counts, the_counts_unc, the_bounds, baselines, peak_energies = get_counts(spec,bg,energies,spec.livetime)
 
     the_calibrated_counts = []
     the_calibrated_counts_unc = []
