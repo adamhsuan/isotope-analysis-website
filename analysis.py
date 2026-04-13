@@ -32,7 +32,7 @@ NA = 6.022e23
 MIN_PEAK_COUNTS = 1000
 CHECK_LIMIT=4
 ENERGIES_TOO_CLOSE_CUTOFF = 3
-MIN_ENERGY_CUTOFF = 100 
+MIN_ENERGY_CUTOFF = 60 
 
 #isotopes_dictionary contains info about parent isotopes and their daughter isotopes, which is used to estimate parent isotoepe masses
 isotopes_dictionary = {
@@ -281,17 +281,13 @@ def get_counts(spec,bg,energies,livetime):
 
 #functions for relative uncertainty calculations in error propegation of mass prediction formula
 def relative_efficiency_unc(energy):
-    return 0
-    #return 0.01
+    return 0.01
 def relative_decay_intensity_unc(energy):
-    return 0
-    #return 0.01
+    return 0.01
 def relative_decay_constant_unc(energy):
-    return 0
-    #return 0.001
+    return 0.001
 def relative_livetime_unc(energy):
-    return 0
-    #return 0.001
+    return 0.001
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
 def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime,eff_func):
