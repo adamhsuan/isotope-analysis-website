@@ -281,7 +281,7 @@ def get_counts(spec,bg,energies,livetime):
 
 #functions for relative uncertainty calculations in error propegation of mass prediction formula
 def relative_efficiency_unc(energy):
-    return 0.1
+    return 0.01
 def relative_decay_intensity_unc(energy):
     return 0.01
 def relative_decay_constant_unc(energy):
