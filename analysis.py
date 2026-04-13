@@ -31,7 +31,7 @@ from types import BuiltinMethodType
 NA = 6.022e23
 MIN_PEAK_COUNTS = 1000
 CHECK_LIMIT=4
-ENERGIES_TOO_CLOSE_CUTOFF = 3
+ENERGIES_TOO_CLOSE_CUTOFF = 0
 MIN_ENERGY_CUTOFF = 60 
 
 #isotopes_dictionary contains info about parent isotopes and their daughter isotopes, which is used to estimate parent isotoepe masses
