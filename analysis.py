@@ -187,12 +187,10 @@ def closest_bin(value, bins):
     - checks whether counts is greater than max_counts, and if so sets max_counts to counts
   - adds max_counts to energy_counts, a list containing the counts for all the enegies
 - returns energy_counts as well as lists containing uncertaintines, bounds, and baselines
+Note: counts returned are not adjusted for efficiency. This adjustment is done later in get_isotopes_info
 """
 
-def get_counts(spec,bg,energies,livetime,efficiency):
-
-    eff_func = am.Efficiency()
-    eff_func.set_parameters(efficiency)
+def get_counts(spec,bg,energies,livetime):
 
     subtracted_spec = spec-bg
 
@@ -257,7 +255,7 @@ def get_counts(spec,bg,energies,livetime,efficiency):
                         least_cps_right=subtracted_spectrum_data[bin]
                         least_cps_bin_right = bin
 
-            total_cps=0
+            total_peak_cps=0
             total_spec_cps=0
             total_bg_cps=0
 
@@ -267,37 +265,27 @@ def get_counts(spec,bg,energies,livetime,efficiency):
             #integrates region. iterates over the bins within the radius, adds the baseline adjusted counts for the particular energy (delta) to the integral
             for bin in subtracted_spectrum_data.keys():
                 if bin >= least_cps_bin_left and bin <= least_cps_bin_right:
-                    cps_per_bin = (nominal_value(subtracted_spectrum_data[bin]) - baseline_cps)
-                    if cps_per_bin > 0:
-                        total_cps += cps_per_bin
+                    peak_cps_per_bin = (nominal_value(subtracted_spectrum_data[bin]) - baseline_cps)
+                    if peak_cps_per_bin > 0:
+                        total_peak_cps += peak_cps_per_bin
                     total_spec_cps += nominal_value(spectrum_data[bin])
                     total_bg_cps += nominal_value(background_data[bin])
 
-            total_counts = total_cps * livetime / eff
-            total_bg_counts_uncalibrated = total_bg_cps * livetime
-            total_spec_counts_uncalibrated = total_spec_cps * livetime
+            total_peak_counts = total_peak_cps * livetime
+            total_bg_counts = total_bg_cps * livetime
+            total_spec_counts = total_spec_cps * livetime
 
-            total_counts_unc = math.sqrt(total_spec_counts_uncalibrated+total_bg_counts_uncalibrated) / eff
+            total_counts_unc = math.sqrt(total_spec_counts+total_bg_counts)
 
             #checks if the counts for this energy is the strongest peak so far and updates if so
-            if total_counts > max_counts:
-                max_counts = total_counts
+            if total_peak_counts > max_counts:
+                max_counts = total_peak_counts
                 max_counts_unc = total_counts_unc
                 left_bound = least_cps_bin_left
                 right_bound = least_cps_bin_right
                 the_baseline_cps = baseline_cps
                 peak_energy = the_energy
 
-            """
-            #if the baseline adjusted counts is above the minimum peak counts, we consider it a peak and stop spiraling outward
-            if baseline_adjusted_counts > MIN_PEAK_COUNTS:
-                integral = baseline_adjusted_counts
-                break
-
-
-            #if we reach the end of the spiral pattern without finding a strong enough peak, we take the strongest peak found
-            elif abs(energy-the_energy) > CHECK_LIMIT:
-            """
             #continue spiraling out searching for peaks
             the_energy+=0.1*(-1)**n*(n+1)
             n+=1
@@ -310,26 +298,39 @@ def get_counts(spec,bg,energies,livetime,efficiency):
 
     return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies]
 
-# returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
-def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime):
+#functions for relative uncertainty calculations in error propegation of mass prediction formula
+def relative_efficiency_unc(energy):
+    return 0.05
+def relative_decay_intensity_unc(energy):
+    return 0.01
+def relative_decay_constant_unc(energy):
+    return 0.001
+def relative_livetime_unc(energy):
+    return 0.001
 
+# returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
+def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime,eff_func):
+    
     #gets the gamma yeild for the energy
     decay_intensity = 0
     for daughter_energy, decay_intensity_value in isotopes_dictionary[parent_isotope]["daughter_isotopes"][daughter_isotope]:
         if daughter_energy == energy:
             decay_intensity = decay_intensity_value
             break
-
+        
     if decay_intensity == 0:
         return [0,0]
 
     #decay constant is calculated based on the half life of the parent isotope
     decay_constant=math.log(2) / isotopes_dictionary[parent_isotope]['half_life']
-
     molar_mass=isotopes_dictionary[parent_isotope]['molar_mass']
-    
-    predicted_parent_mass = counts * molar_mass / (NA * decay_intensity * decay_constant * livetime)
-    predicted_parent_mass_uncertainty =  unc * molar_mass / (NA * decay_intensity * decay_constant * livetime)
+    eff = eff_func.get_eff(energy)
+
+    #predicted parent mass calculated by decay physics
+    predicted_parent_mass = counts * molar_mass / (eff *NA * decay_intensity * decay_constant * livetime)
+
+    #uncertainty calculated by error propegation of mass formula, assumes error in unc, efficiency, decay intensity, decay constant, and livetime
+    predicted_parent_mass_uncertainty =  predicted_parent_mass*math.sqrt((unc/counts)**2+(relative_efficiency_unc(energy))**2+(relative_decay_intensity_unc(energy))**2+(relative_decay_constant_unc(energy))**2+(relative_livetime_unc(energy))**2)
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -373,32 +374,32 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     #gets the counts at each energy
     the_counts, the_counts_unc, the_bounds, baselines, peak_energies = get_counts(spec,bg,energies,spec.livetime,efficiency)
 
-    the_uncalibrated_counts = []
-    the_uncalibrated_counts_unc = []
+    the_calibrated_counts = []
+    the_calibrated_counts_unc = []
 
-    #gets the_uncalibrated_counts based on calibrated counts by multiplying by the efficiency function
+    #gets calibrated_counts based on counts by multiplying by the efficiency function
     for i in range(len(energies)):
         eff = eff_func.get_eff(energies[i])
-        the_uncalibrated_counts.append(the_counts[i] * eff)
-        the_uncalibrated_counts_unc.append(the_counts_unc[i] * eff)
+        the_calibrated_counts.append(the_counts[i] / eff)
+        the_calibrated_counts_unc.append(the_counts_unc[i] / eff)
 
     #creates dictionary containing isotope counts and mass info
     isotopes_in_sample_info = {}
     for i in range(len(energies)):
         title=""
         #gets the isotopes info values for each energy
-        ene, counts, counts_unc, uncalibrated_counts, uncalibrated_counts_unc, bounds, baseline, peak_energy= energies[i], the_counts[i], the_counts_unc[i], the_uncalibrated_counts[i], the_uncalibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i]
+        ene, counts, counts_unc, calibrated_counts, calibrated_counts_unc, bounds, baseline, peak_energy= energies[i], the_counts[i], the_counts_unc[i], the_calibrated_counts[i], the_calibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i]
 
         #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
 
         #gets the predicted parent mass and unc based on the isotopes info for that energy
-        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,counts,counts_unc,spec.livetime)
+        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,calibrated_counts,calibrated_counts_unc,spec.livetime,eff_func)
 
         #creates the dictionary by adding isotope info by energy to parent isotope
         if parent_isotope not in isotopes_in_sample_info:
             isotopes_in_sample_info[parent_isotope] = {}
-        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "counts": counts, "counts_unc": counts_unc, "uncalibrated_counts": uncalibrated_counts, "uncalibrated_counts_unc": uncalibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
+        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
         title=str(ene)+"keV spectrum graph"
         subtracted_spec=spec-bg
         graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy)
@@ -420,9 +421,7 @@ def estimate_aggregated_masses_and_uncertainties(isotopes_info):
         #loops through each energy corresponding to a parent isotope, and combines the predicted parent mass values and uncertainties while maintaining error propegation
         for ene in isotopes_info[parent_isotope]:
             entry = isotopes_info[parent_isotope][ene]
-            daughter_isotope = entry["daughter_isotope"]
-            counts = entry["counts"]
-            unc = entry["counts_unc"]
+            unc = entry["calibrated_counts_unc"]
             predicted_parent_mass = entry["predicted_parent_mass"]
             predicted_parent_mass_unc = entry["predicted_parent_mass_unc"]
             if unc == 0 or predicted_parent_mass_unc == 0:
