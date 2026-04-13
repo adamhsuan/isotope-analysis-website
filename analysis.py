@@ -193,9 +193,6 @@ def get_counts(spec,bg,energies,livetime):
     #peak_energies are the energies of the actual peaks found (not the energies from the dictionary)
     peak_energies=[]
 
-    #tracks the number of close peaks to discount them in uncertainty calculations (unsure which peak corresponds to which energy)
-    num_close_peaks = 0
-
     for energy in energies:
 
         #max_radius is the maximum half-width of the peak we're checking. The bounds of integration may reside inside the radius of a local minimum occurs
@@ -280,7 +277,7 @@ def get_counts(spec,bg,energies,livetime):
         baselines.append(the_baseline_cps)
         peak_energies.append(peak_energy)
 
-    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies,num_close_peaks]
+    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies]
 
 #functions for relative uncertainty calculations in error propegation of mass prediction formula
 def relative_efficiency_unc(energy):
