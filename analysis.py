@@ -311,7 +311,8 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,liveti
     predicted_parent_mass = counts * molar_mass / (eff *NA * decay_intensity * decay_constant * livetime)
 
     #uncertainty calculated by error propegation of mass formula, assumes error in unc, efficiency, decay intensity, decay constant, and livetime
-    predicted_parent_mass_uncertainty =  predicted_parent_mass*math.sqrt((unc/counts)**2+(relative_efficiency_unc(energy))**2+(relative_decay_intensity_unc(energy))**2+(relative_decay_constant_unc(energy))**2+(relative_livetime_unc(energy))**2)
+    predicted_parent_mass_uncertainty =  predicted_parent_mass*math.sqrt((unc/counts)**2)
+                                                                         #+(relative_efficiency_unc(energy))**2+(relative_decay_intensity_unc(energy))**2+(relative_decay_constant_unc(energy))**2+(relative_livetime_unc(energy))**2)
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -350,7 +351,6 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
 
     energies = list(inverted_isotopes_dictionary.keys())
     energy_graphs = get_inverted_isotopes_dictionary(isotopes_dictionary)
-
 
     #gets the counts at each energy
     the_counts, the_counts_unc, the_bounds, baselines, peak_energies = get_counts(spec,bg,energies,spec.livetime)
