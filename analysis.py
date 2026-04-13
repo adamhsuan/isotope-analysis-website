@@ -213,7 +213,6 @@ def get_counts(spec,bg,energies,livetime):
     peak_energies=[]
 
     for energy in energies:
-        eff = eff_func.get_eff(energy)
 
         #max_radius is the maximum half-width of the peak we're checking. The bounds of integration may reside inside the radius of a local minimum occurs
         max_radius = 1.06*math.sqrt(0.4+0.0024*energy)
