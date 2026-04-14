@@ -641,7 +641,7 @@ def create_key_graphs(results):
 def analyze_spectrum(spectrum_path,background_path,efficiency,isotopes_dictionary=isotopes_dictionary):
 
     #uncomment the following line to remove energies that are close to each other
-    isotopes_dictionary = remove_close_energies(isotopes_dictionary)
+    #isotopes_dictionary = remove_close_energies(isotopes_dictionary)
 
     #small energies can cause issues with peak identification
     isotopes_dictionary = remove_small_energies(isotopes_dictionary)
