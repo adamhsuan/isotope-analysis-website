@@ -193,7 +193,14 @@ def get_counts(spec,bg,energies,livetime):
     #peak_energies are the energies of the actual peaks found (not the energies from the dictionary)
     peak_energies=[]
 
+    #stores the number of close peaks for each energy
+    num_close_peaks_list = []
+
     for energy in energies:
+        #num close peaks tracks the number of peaks that are close and discounts those energies in uncertainty calculation (we don't know for sure that that peak came from the energy)
+        num_close_peaks = 0
+        current_peak_left = True
+        current_peak_right = True
 
         #max_radius is the maximum half-width of the peak we're checking. The bounds of integration may reside inside the radius of a local minimum occurs
         max_radius = 1.06*math.sqrt(0.4+0.0024*energy)
@@ -267,6 +274,22 @@ def get_counts(spec,bg,energies,livetime):
                 the_baseline_cps = baseline_cps
                 peak_energy = the_energy
 
+            #if the peak counts are above the cutoff and we haven't already counted the current peak (current_peak_left or current_peak_right must be false), add one to num_close_energies
+            if total_peak_counts > MIN_PEAK_COUNTS and abs(energy-the_energy) < ENERGIES_TOO_CLOSE_CUTOFF:
+                if the_energy<energy:
+                    if not current_peak_left:
+                        current_peak_left = True
+                        num_close_peaks += 1
+                else:
+                    if not current_peak_right:
+                        current_peak_right = True
+                        num_close_peaks += 1
+            else:
+                if the_energy<energy:
+                    current_peak_left = False
+                else:
+                    current_peak_right = False
+
             #continue spiraling out searching for peaks
             the_energy+=0.1*(-1)**n*(n+1)
             n+=1
@@ -276,10 +299,11 @@ def get_counts(spec,bg,energies,livetime):
         bounds.append([left_bound,right_bound])
         baselines.append(the_baseline_cps)
         peak_energies.append(peak_energy)
+        num_close_peaks_list.append(num_close_peaks)
 
-    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies]
+    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies,num_close_peaks_list]
 
-#functions for relative uncertainty calculations in error propegation of mass prediction formula
+#functions for relative uncertainty calculations in error propegation of mass prediction formula. Change these later if more precision required
 def relative_efficiency_unc(energy):
     return 0.01
 def relative_decay_intensity_unc(energy):
@@ -290,7 +314,7 @@ def relative_livetime_unc(energy):
     return 0.001
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
-def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,livetime,eff_func):
+def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,num_close_peaks,livetime,eff_func):
     
     #gets the gamma yeild for the energy
     decay_intensity = 0
@@ -313,6 +337,9 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,liveti
     #uncertainty calculated by error propegation of mass formula, assumes error in unc, efficiency, decay intensity, decay constant, and livetime
     predicted_parent_mass_uncertainty =  predicted_parent_mass*math.sqrt((unc/counts)**2)
                                                                          #+(relative_efficiency_unc(energy))**2+(relative_decay_intensity_unc(energy))**2+(relative_decay_constant_unc(energy))**2+(relative_livetime_unc(energy))**2)
+    
+    #discounts the uncertainty if there are close peaks
+    predicted_parent_mass_uncertainty *= num_close_peaks+1
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
 
@@ -353,7 +380,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     energy_graphs = get_inverted_isotopes_dictionary(isotopes_dictionary)
 
     #gets the counts at each energy
-    the_counts, the_counts_unc, the_bounds, baselines, peak_energies = get_counts(spec,bg,energies,spec.livetime)
+    the_counts, the_counts_unc, the_bounds, baselines, peak_energies, num_close_peaks_list = get_counts(spec,bg,energies,spec.livetime)
 
     the_calibrated_counts = []
     the_calibrated_counts_unc = []
@@ -369,18 +396,18 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     for i in range(len(energies)):
         title=""
         #gets the isotopes info values for each energy
-        ene, counts, counts_unc, calibrated_counts, calibrated_counts_unc, bounds, baseline, peak_energy= energies[i], the_counts[i], the_counts_unc[i], the_calibrated_counts[i], the_calibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i]
+        ene, counts, counts_unc, calibrated_counts, calibrated_counts_unc, bounds, baseline, peak_energy, num_close_peaks= energies[i], the_counts[i], the_counts_unc[i], the_calibrated_counts[i], the_calibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i], num_close_peaks_list[i]
 
         #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
 
         #gets the predicted parent mass and unc based on the isotopes info for that energy
-        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,calibrated_counts,calibrated_counts_unc,spec.livetime,eff_func)
+        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,calibrated_counts,calibrated_counts_unc,num_close_peaks,spec.livetime,eff_func)
 
         #creates the dictionary by adding isotope info by energy to parent isotope
         if parent_isotope not in isotopes_in_sample_info:
             isotopes_in_sample_info[parent_isotope] = {}
-        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc}
+        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc, "num_close_peaks": num_close_peaks}
         title=str(ene)+"keV spectrum graph"
         subtracted_spec=spec-bg
         graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy)
