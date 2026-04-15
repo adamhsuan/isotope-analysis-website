@@ -29,7 +29,7 @@ import uuid
 from types import BuiltinMethodType
 
 NA = 6.022e23
-MIN_PEAK_COUNTS = 2000
+MIN_PEAK_COUNTS = 3000
 CHECK_LIMIT=4
 ENERGIES_TOO_CLOSE_CUTOFF = 4
 MIN_ENERGY_CUTOFF = 60 
@@ -557,9 +557,10 @@ def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy):
     ax.set_ylim(-0.01,0.03)
     ax.set_title(title)
     spec.plot(ax=ax)
-    ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5)
-    ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.5)
-    ax.vlines([peak_energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "blue", linewidth=0.5,label=f"{peak_energy}")
+    ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5,label="bounds of integration")
+    ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.5,label=f"expected energy: {energy}keV")
+    ax.vlines([peak_energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "blue", linewidth=0.5,label=f"peak_energy: {peak_energy}keV")
+    ax.vlines([closest_bin(energy-ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev),closest_bin(energy+ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev)], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="orange", linewidth=0.5, label=f"close energies range")
     plt.legend()
     plt.axhline(y=baseline, color='y', linestyle='--', label='y=5')
     filename = f"plot_{uuid.uuid4().hex}.png"
