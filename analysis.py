@@ -550,7 +550,7 @@ def create_spectrum_graph(spec, energies):
     plt.close()
     return filename
 
-def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energies):
+def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energies=[]):
     global unorganized_energy_graphs
     plt.figure()
     fig, ax = plt.subplots(figsize = (10,3))
