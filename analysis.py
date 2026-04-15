@@ -411,7 +411,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
         isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc, "close_energies": close_energies}
         title=str(ene)+"keV spectrum graph"
         subtracted_spec=spec-bg
-        graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy)
+        graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy, close_energies)
         energy_graphs[ene].append(graph)
 
     # reorganizes the energy graph data structure for easier access in the template
