@@ -193,12 +193,12 @@ def get_counts(spec,bg,energies,livetime):
     #peak_energies are the energies of the actual peaks found (not the energies from the dictionary)
     peak_energies=[]
 
-    #stores the number of close peaks for each energy
-    num_close_peaks_list = []
+    #stores lists containing close energies for each energy
+    close_energies_list = []
 
     for energy in energies:
         #num close peaks tracks the number of peaks that are close and discounts those energies in uncertainty calculation (we don't know for sure that that peak came from the energy)
-        num_close_peaks = 0
+        close_energies = []
         current_peak_left = True
         current_peak_right = True
 
@@ -279,11 +279,11 @@ def get_counts(spec,bg,energies,livetime):
                 if the_energy<energy:
                     if not current_peak_left:
                         current_peak_left = True
-                        num_close_peaks += 1
+                        close_energies.append(energy)
                 else:
                     if not current_peak_right:
                         current_peak_right = True
-                        num_close_peaks += 1
+                        close_energies.append(energy)
             else:
                 if the_energy<energy:
                     current_peak_left = False
@@ -299,9 +299,9 @@ def get_counts(spec,bg,energies,livetime):
         bounds.append([left_bound,right_bound])
         baselines.append(the_baseline_cps)
         peak_energies.append(peak_energy)
-        num_close_peaks_list.append(num_close_peaks)
+        close_energies_list.append(close_energies)
 
-    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies,num_close_peaks_list]
+    return [energies_counts,energies_counts_unc,bounds,baselines,peak_energies,close_energies_list]
 
 #functions for relative uncertainty calculations in error propegation of mass prediction formula. Change these later if more precision required
 def relative_efficiency_unc(energy):
@@ -314,7 +314,7 @@ def relative_livetime_unc(energy):
     return 0.001
 
 # returns the predicted parent isotope mass and mass uncertainty based on the daughter isotope counts and counts uncertainty
-def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,num_close_peaks,livetime,eff_func):
+def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,close_energies,livetime,eff_func):
     
     #gets the gamma yeild for the energy
     decay_intensity = 0
@@ -339,6 +339,7 @@ def get_mass_prediction(parent_isotope,daughter_isotope,energy,counts,unc,num_cl
                                                                          #+(relative_efficiency_unc(energy))**2+(relative_decay_intensity_unc(energy))**2+(relative_decay_constant_unc(energy))**2+(relative_livetime_unc(energy))**2)
     
     #discounts the uncertainty if there are close peaks
+    num_close_peaks = len(close_energies)
     predicted_parent_mass_uncertainty *= num_close_peaks+1
 
     return [predicted_parent_mass,predicted_parent_mass_uncertainty]
@@ -380,7 +381,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     energy_graphs = get_inverted_isotopes_dictionary(isotopes_dictionary)
 
     #gets the counts at each energy
-    the_counts, the_counts_unc, the_bounds, baselines, peak_energies, num_close_peaks_list = get_counts(spec,bg,energies,spec.livetime)
+    the_counts, the_counts_unc, the_bounds, baselines, peak_energies, close_energies_list = get_counts(spec,bg,energies,spec.livetime)
 
     the_calibrated_counts = []
     the_calibrated_counts_unc = []
@@ -396,18 +397,18 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
     for i in range(len(energies)):
         title=""
         #gets the isotopes info values for each energy
-        ene, counts, counts_unc, calibrated_counts, calibrated_counts_unc, bounds, baseline, peak_energy, num_close_peaks= energies[i], the_counts[i], the_counts_unc[i], the_calibrated_counts[i], the_calibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i], num_close_peaks_list[i]
+        ene, counts, counts_unc, calibrated_counts, calibrated_counts_unc, bounds, baseline, peak_energy, close_energies = energies[i], the_counts[i], the_counts_unc[i], the_calibrated_counts[i], the_calibrated_counts_unc[i], the_bounds[i], baselines[i], peak_energies[i], close_energies_list[i]
 
         #gets the parent and daughter isotopes for the energy to construct the dictionary
         parent_isotope, daughter_isotope = inverted_isotopes_dictionary[ene][1], inverted_isotopes_dictionary[ene][0]
 
         #gets the predicted parent mass and unc based on the isotopes info for that energy
-        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,calibrated_counts,calibrated_counts_unc,num_close_peaks,spec.livetime,eff_func)
+        predicted_parent_mass, predicted_parent_mass_unc = get_mass_prediction(parent_isotope,daughter_isotope,ene,calibrated_counts,calibrated_counts_unc,close_energies,spec.livetime,eff_func)
 
         #creates the dictionary by adding isotope info by energy to parent isotope
         if parent_isotope not in isotopes_in_sample_info:
             isotopes_in_sample_info[parent_isotope] = {}
-        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc, "num_close_peaks": num_close_peaks}
+        isotopes_in_sample_info[parent_isotope][ene]={"daughter_isotope":daughter_isotope, "uncalibrated_counts": counts, "uncalibrated_counts_unc": counts_unc, "calibrated_counts": calibrated_counts, "calibrated_counts_unc": calibrated_counts_unc, "predicted_parent_mass": predicted_parent_mass, "predicted_parent_mass_unc": predicted_parent_mass_unc, "close_energies": close_energies}
         title=str(ene)+"keV spectrum graph"
         subtracted_spec=spec-bg
         graph = create_peak_graph(subtracted_spec, ene, title, bounds, baseline, peak_energy)
@@ -549,18 +550,19 @@ def create_spectrum_graph(spec, energies):
     plt.close()
     return filename
 
-def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy):
+def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energies):
     global unorganized_energy_graphs
     plt.figure()
     fig, ax = plt.subplots(figsize = (10,3))
-    ax.set_xlim(energy-50,energy+50)
+    ax.set_xlim(energy-40,energy+40)
     ax.set_ylim(-0.01,0.03)
     ax.set_title(title)
     spec.plot(ax=ax)
-    ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5,label="bounds of integration")
-    ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.5,label=f"expected energy: {energy}keV")
+    ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5, linestyle='--', label="bounds of integration")
+    ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.7,label=f"expected energy: {energy}keV")
     ax.vlines([peak_energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "blue", linewidth=0.5,label=f"peak_energy: {peak_energy}keV")
-    ax.vlines([closest_bin(energy-ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev),closest_bin(energy+ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev)], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="orange", linewidth=0.5, label=f"close energies range")
+    ax.vlines([closest_bin(energy-ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev),closest_bin(energy+ENERGIES_TOO_CLOSE_CUTOFF, spec.bin_centers_kev)], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="orange", linewidth=0.5, linestyle='--', label=f"close energies range")
+    ax.vlines([closest_bin(energy) for energy in close_energies], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="purple", linewidth=0.5, label=f"close energies")
     plt.legend()
     plt.axhline(y=baseline, color='y', linestyle='--', label='y=5')
     filename = f"plot_{uuid.uuid4().hex}.png"
