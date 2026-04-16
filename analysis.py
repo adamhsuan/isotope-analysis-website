@@ -566,7 +566,6 @@ def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energi
     ax.set_ylim(-0.01,0.03)
     ax.set_title(title)
     spec.plot(ax=ax)
-    """
     ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5, linestyle='--', label="bounds of integration")
     ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.7,label=f"expected energy: {energy}keV")
     ax.vlines([peak_energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "blue", linewidth=0.5,label=f"peak_energy: {peak_energy}keV")
@@ -574,7 +573,7 @@ def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energi
     ax.vlines([closest_bin(energy, spec.bin_centers_kev) for energy in close_energies], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="purple", linewidth=0.5, label=f"close energies")
     plt.legend()
     plt.axhline(y=baseline, color='y', linestyle='--', label='y=5')
-    """
+    
     filename = f"plot_{uuid.uuid4().hex}.png"
 
     #filepath = os.path.join("static", filename)
