@@ -172,11 +172,7 @@ def closest_bin(value, bins):
 Note: counts returned are not adjusted for efficiency. This adjustment is done later in get_isotopes_info
 """
 
-def get_counts(spec,bg,energies,livetime):
-
-    eff_func = am.Efficiency()
-    eff_func.set_parameters(efficiency)
-
+def get_counts(spec,bg,energies,livetime,eff_func):
     subtracted_spec = spec-bg
 
     #lists containing the energy and cps per energy bin for the spec, bg, and subtracted_spec
@@ -426,7 +422,7 @@ def get_isotopes_info(spec, bg, isotopes_dictionary,efficiency):
 
     #gets the counts at each energy
     #the_counts, the_counts_unc, the_bounds, baselines, peak_energies, close_energies_list = get_counts(spec,bg,energies,spec.livetime)
-    daughter_energies_peaks_counts = get_counts(spec,bg,energies,spec.livetime)
+    daughter_energies_peaks_counts = get_counts(spec,bg,energies,spec.livetime,eff_func)
 
     #gets the closest peak to the expected energy for each energy
     closest_peaks_energies_counts = {}
