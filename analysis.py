@@ -203,11 +203,11 @@ def get_counts(spec,bg,energies,livetime):
         #max_radius is the maximum half-width of the peak we're checking. The bounds of integration may reside inside the radius of a local minimum occurs
         max_radius = 1.06*math.sqrt(0.4+0.0024*energy)
 
-        """
+        
         #max_counts and max_counts_unc keep track of the strongest peak found
         max_counts=0
         max_counts_unc=0
-        """
+        
 
         #dictionary containing the counts under each peak centered at a given energy (dictionary key)
         peak_counts_per_energy = {}
@@ -215,12 +215,12 @@ def get_counts(spec,bg,energies,livetime):
         #the_energy is the current peak center we are checking. we start at the left side of the check limit and work out way to the right
         the_energy = energy - CHECK_LIMIT
 
-        """
+        
         left_bound = 0
         right_bound = 0
         the_baseline_cps = 0
         peak_energy = energy
-        """
+        
 
         while energy-the_energy < CHECK_LIMIT:
 
@@ -269,7 +269,7 @@ def get_counts(spec,bg,energies,livetime):
 
             total_counts_unc = math.sqrt(total_spec_counts+total_bg_counts)
 
-            """
+            
             #checks if the counts for this energy is the strongest peak so far and updates if so
             if total_peak_counts > max_counts:
                 max_counts = total_peak_counts
@@ -294,7 +294,7 @@ def get_counts(spec,bg,energies,livetime):
                     current_peak_left = False
                 else:
                     current_peak_right = False
-            """
+            
             #adds the peak counts to the peak_counts_per_energy dictionary
             peak_counts_per_energy[the_energy] = {"peak_energy": total_peak_counts, "total_counts_unc": total_counts_unc, "bounds": [least_cps_bin_left, least_cps_bin_right], "baseline": baseline_cps}
         
