@@ -199,32 +199,36 @@ def get_counts(spec,bg,energies,livetime):
     for energy in energies:
         #num close peaks tracks the number of peaks that are close and discounts those energies in uncertainty calculation (we don't know for sure that that peak came from the energy)
         close_energies = []
-        current_peak_left = True
-        current_peak_right = True
 
         #max_radius is the maximum half-width of the peak we're checking. The bounds of integration may reside inside the radius of a local minimum occurs
         max_radius = 1.06*math.sqrt(0.4+0.0024*energy)
 
+        """
         #max_counts and max_counts_unc keep track of the strongest peak found
         max_counts=0
         max_counts_unc=0
+        """
 
-        #the_energy is the current peak center we are checking. we will adjust this value if we find a stronger peak nearby
-        the_energy = energy
+        #dictionary containing the counts under each peak centered at a given energy (dictionary key)
+        peak_counts_per_energy = {}
 
-        #n is used to adjust the energy in a pattern spiraling outward from the original energy value, to find the strongest peak
-        n=1
+        #the_energy is the current peak center we are checking. we start at the left side of the check limit and work out way to the right
+        the_energy = energy - CHECK_LIMIT
 
+        """
         left_bound = 0
         right_bound = 0
         the_baseline_cps = 0
         peak_energy = energy
+        """
 
-        while abs(energy-the_energy) < CHECK_LIMIT:
+        while energy-the_energy < CHECK_LIMIT:
 
+            #bin values corresponding to maximum peak radii
             max_radius_left = closest_bin(the_energy-max_radius,spec.energies_kev)
             max_radius_right = closest_bin(the_energy+max_radius,spec.energies_kev)
 
+            #sets initial values for locla minima to maximum possible (cps at bounds of max peak radius)
             least_cps_left = subtracted_spectrum_data[max_radius_left]
             least_cps_bin_left = max_radius_left
             least_cps_right = subtracted_spectrum_data[max_radius_right]
@@ -265,6 +269,7 @@ def get_counts(spec,bg,energies,livetime):
 
             total_counts_unc = math.sqrt(total_spec_counts+total_bg_counts)
 
+            """
             #checks if the counts for this energy is the strongest peak so far and updates if so
             if total_peak_counts > max_counts:
                 max_counts = total_peak_counts
@@ -273,7 +278,7 @@ def get_counts(spec,bg,energies,livetime):
                 right_bound = least_cps_bin_right
                 the_baseline_cps = baseline_cps
                 peak_energy = the_energy
-
+            
             #if the peak counts are above the cutoff and we haven't already counted the current peak (current_peak_left or current_peak_right must be false), add one to num_close_energies
             if total_peak_counts > MIN_PEAK_COUNTS and abs(energy-the_energy) < ENERGIES_TOO_CLOSE_CUTOFF:
                 if the_energy<energy:
@@ -289,10 +294,13 @@ def get_counts(spec,bg,energies,livetime):
                     current_peak_left = False
                 else:
                     current_peak_right = False
+            """
+            #adds the peak counts to the peak_counts_per_energy dictionary
+            peak_counts_per_energy[the_energy] = {"peak_energy": total_peak_counts, "total_counts_unc": total_counts_unc, "bounds": [least_cps_bin_left, least_cps_bin_right], "baseline": baseline_cps}
+        
+        #finds all the peaks within the check limit
 
-            #continue spiraling out searching for peaks
-            the_energy+=0.1*(-1)**n*(n+1)
-            n+=1
+
 
         energies_counts.append(max_counts)
         energies_counts_unc.append(max_counts_unc)
@@ -558,6 +566,7 @@ def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energi
     ax.set_ylim(-0.01,0.03)
     ax.set_title(title)
     spec.plot(ax=ax)
+    """
     ax.vlines(bounds,ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "red", linewidth=0.5, linestyle='--', label="bounds of integration")
     ax.vlines([energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "green", linewidth=0.7,label=f"expected energy: {energy}keV")
     ax.vlines([peak_energy],ymin=0,ymax=np.max(spec.cps_vals) * 1.5, colors = "blue", linewidth=0.5,label=f"peak_energy: {peak_energy}keV")
@@ -565,6 +574,7 @@ def create_peak_graph(spec,energy,title,bounds,baseline,peak_energy,close_energi
     ax.vlines([closest_bin(energy, spec.bin_centers_kev) for energy in close_energies], ymin=0, ymax=np.max(spec.cps_vals) * 1.5, colors="purple", linewidth=0.5, label=f"close energies")
     plt.legend()
     plt.axhline(y=baseline, color='y', linestyle='--', label='y=5')
+    """
     filename = f"plot_{uuid.uuid4().hex}.png"
 
     #filepath = os.path.join("static", filename)
