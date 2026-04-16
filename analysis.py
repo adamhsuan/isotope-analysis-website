@@ -299,7 +299,7 @@ def get_counts(spec,bg,energies,livetime):
         #finds all the peaks within the check limit
         
         #testing values
-        max_counts = 0
+        max_counts = 1
         max_counts_unc = 1
         left_bound = 0
         right_bound = 0
